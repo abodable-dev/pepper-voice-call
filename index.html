@@ -20,7 +20,7 @@
             padding: 40px;
             border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            max-width: 500px;
+            max-width: 600px;
             width: 100%;
         }
         h1 {
@@ -77,6 +77,37 @@
             opacity: 0.5;
             cursor: not-allowed;
         }
+        .transcript {
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        .message {
+            margin: 10px 0;
+            padding: 12px;
+            border-radius: 8px;
+            animation: fadeIn 0.3s;
+        }
+        .message.user {
+            background: #e3f2fd;
+            text-align: right;
+        }
+        .message.assistant {
+            background: #f3e5f5;
+        }
+        .message strong {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 12px;
+            opacity: 0.7;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
         .info {
             background: #e7f3ff;
             padding: 15px;
@@ -110,17 +141,22 @@
             ❌ End Call
         </button>
         
+        <div id="transcript" class="transcript" style="display:none;">
+            <div id="messages"></div>
+        </div>
+        
         <div class="info">
             📱 Works on any device with a microphone<br>
-            🌐 No app installation needed
+            🌐 Powered by Claude Opus 4.6
         </div>
     </div>
 
     <script>
-        let mediaRecorder;
-        let audioChunks = [];
         let recognition;
         let isActive = false;
+        let conversationHistory = [];
+        const API_URL = 'https://cherly-posthemiplegic-lizzette.ngrok-free.dev/v1/chat/completions';
+        const API_TOKEN = '0606e7e42d266711af55d7f720655c5ce242086b8f0ca51a';
 
         function updateStatus(message, type = 'idle') {
             const statusEl = document.getElementById('status');
@@ -128,9 +164,27 @@
             statusEl.className = `status ${type}`;
         }
 
+        function addMessage(role, content) {
+            const messagesDiv = document.getElementById('messages');
+            const transcriptDiv = document.getElementById('transcript');
+            transcriptDiv.style.display = 'block';
+            
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message ${role}`;
+            msgDiv.innerHTML = `<strong>${role === 'user' ? 'You' : 'Pepper'}</strong>${content}`;
+            messagesDiv.appendChild(msgDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
         async function startCall() {
             try {
                 updateStatus('Requesting microphone access...', 'connecting');
+                
+                // Check for speech recognition support
+                if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+                    updateStatus('Speech recognition not supported in this browser', 'error');
+                    return;
+                }
                 
                 // Request microphone
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -140,33 +194,49 @@
                 document.getElementById('endBtn').style.display = 'block';
                 isActive = true;
                 
-                // Try Web Speech API first (Chrome/Safari)
-                if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-                    recognition = new SpeechRecognition();
-                    recognition.continuous = true;
-                    recognition.interimResults = false;
+                // Initialize conversation
+                conversationHistory = [];
+                document.getElementById('messages').innerHTML = '';
+                
+                // Setup speech recognition
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                recognition.continuous = true;
+                recognition.interimResults = false;
+                recognition.lang = 'en-AU';
+                
+                recognition.onresult = async (event) => {
+                    const transcript = event.results[event.results.length - 1][0].transcript.trim();
+                    if (!transcript) return;
                     
-                    recognition.onresult = async (event) => {
-                        const transcript = event.results[event.results.length - 1][0].transcript;
-                        updateStatus(`You said: "${transcript}"`, 'connected');
-                        
-                        // Send to Pepper
-                        await sendMessage(transcript);
-                    };
+                    console.log('Heard:', transcript);
+                    addMessage('user', transcript);
+                    updateStatus('🤔 Pepper is thinking...', 'connecting');
                     
-                    recognition.onerror = (event) => {
-                        console.error('Speech recognition error:', event.error);
-                        updateStatus('Speech recognition error - trying audio recording...', 'error');
-                        startAudioRecording(stream);
-                    };
-                    
-                    recognition.start();
-                    
-                } else {
-                    // Fallback: record audio
-                    startAudioRecording(stream);
-                }
+                    await sendMessage(transcript);
+                };
+                
+                recognition.onerror = (event) => {
+                    console.error('Speech recognition error:', event.error);
+                    if (event.error === 'no-speech') {
+                        // Ignore no-speech errors, just keep listening
+                        return;
+                    }
+                    updateStatus(`Speech error: ${event.error}`, 'error');
+                };
+                
+                recognition.onend = () => {
+                    // Auto-restart if still active
+                    if (isActive) {
+                        try {
+                            recognition.start();
+                        } catch (e) {
+                            console.log('Recognition restart prevented:', e);
+                        }
+                    }
+                };
+                
+                recognition.start();
                 
             } catch (err) {
                 updateStatus(`Error: ${err.message}`, 'error');
@@ -176,86 +246,106 @@
             }
         }
 
-        function startAudioRecording(stream) {
-            mediaRecorder = new MediaRecorder(stream);
-            
-            mediaRecorder.ondataavailable = (event) => {
-                audioChunks.push(event.data);
-            };
-            
-            mediaRecorder.onstop = async () => {
-                if (!isActive) return;
-                
-                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                audioChunks = [];
-                
-                updateStatus('Processing your message...', 'connecting');
-                await sendAudio(audioBlob);
-                
-                // Restart recording
-                if (isActive && mediaRecorder.state !== 'recording') {
-                    mediaRecorder.start();
-                }
-            };
-            
-            // Record in 5-second chunks
-            mediaRecorder.start();
-            setInterval(() => {
-                if (isActive && mediaRecorder && mediaRecorder.state === 'recording') {
-                    mediaRecorder.stop();
-                }
-            }, 5000);
-        }
-
-        async function sendMessage(text) {
+        async function sendMessage(userMessage) {
             try {
-                const response = await fetch('https://cherly-posthemiplegic-lizzette.ngrok-free.dev/v1/chat/completions', {
+                // Add user message to history
+                conversationHistory.push({
+                    role: 'user',
+                    content: userMessage
+                });
+                
+                // Call Pepper's API with full conversation history
+                const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
-                        'Authorization': 'Bearer 0606e7e42d266711af55d7f720655c5ce242086b8f0ca51a'
+                        'Authorization': `Bearer ${API_TOKEN}`
                     },
                     body: JSON.stringify({ 
-                        model: 'anthropic/claude-sonnet-4-5',
-                        messages: [{ role: 'user', content: text }],
-                        stream: false
+                        model: 'anthropic/claude-opus-4.6-20250125',
+                        messages: conversationHistory,
+                        stream: false,
+                        max_tokens: 2048
                     })
                 });
                 
-                const result = await response.json();
-                
-                const pepperResponse = result.choices?.[0]?.message?.content || 'Got it!';
-                
-                updateStatus(`Pepper: "${pepperResponse}"`, 'connected');
-                
-                // Speak response (if supported)
-                if ('speechSynthesis' in window) {
-                    const utterance = new SpeechSynthesisUtterance(pepperResponse);
-                    utterance.rate = 1.1;
-                    utterance.pitch = 1.0;
-                    window.speechSynthesis.speak(utterance);
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('API Error:', errorText);
+                    throw new Error(`API returned ${response.status}: ${errorText}`);
                 }
+                
+                const result = await response.json();
+                console.log('API Response:', result);
+                
+                // Extract assistant message
+                const assistantMessage = result.choices?.[0]?.message;
+                
+                if (!assistantMessage) {
+                    throw new Error('No message in API response');
+                }
+                
+                // Add full assistant message to history (including any tool_use content)
+                conversationHistory.push(assistantMessage);
+                
+                // Extract text content for display and speech
+                let textContent = '';
+                if (typeof assistantMessage.content === 'string') {
+                    textContent = assistantMessage.content;
+                } else if (Array.isArray(assistantMessage.content)) {
+                    // Handle content blocks (tool_use + text)
+                    const textBlocks = assistantMessage.content.filter(block => block.type === 'text');
+                    textContent = textBlocks.map(block => block.text).join(' ');
+                }
+                
+                if (textContent) {
+                    addMessage('assistant', textContent);
+                    updateStatus('🗣️ Pepper is speaking...', 'connected');
+                    
+                    // Speak response
+                    if ('speechSynthesis' in window) {
+                        const utterance = new SpeechSynthesisUtterance(textContent);
+                        utterance.rate = 1.1;
+                        utterance.pitch = 1.0;
+                        
+                        // Try to find an Australian voice
+                        const voices = window.speechSynthesis.getVoices();
+                        const auVoice = voices.find(v => v.lang.startsWith('en-AU')) || 
+                                       voices.find(v => v.lang.startsWith('en-'));
+                        if (auVoice) utterance.voice = auVoice;
+                        
+                        utterance.onend = () => {
+                            if (isActive) {
+                                updateStatus('🎙️ Listening...', 'connected');
+                            }
+                        };
+                        
+                        window.speechSynthesis.speak(utterance);
+                    } else {
+                        setTimeout(() => {
+                            if (isActive) {
+                                updateStatus('🎙️ Listening...', 'connected');
+                            }
+                        }, 1000);
+                    }
+                } else {
+                    // No text to speak (tool use only)
+                    if (isActive) {
+                        updateStatus('🎙️ Listening...', 'connected');
+                    }
+                }
+                
+            } catch (err) {
+                console.error('Failed to send message:', err);
+                updateStatus(`Error: ${err.message}`, 'error');
+                addMessage('assistant', `Sorry, I had an error: ${err.message}`);
                 
                 setTimeout(() => {
                     if (isActive) {
                         updateStatus('🎙️ Listening...', 'connected');
                     }
                 }, 2000);
-                
-            } catch (err) {
-                console.error('Failed to send message:', err);
-                updateStatus('Connection error - retrying...', 'error');
             }
-        }
-
-        async function sendAudio(blob) {
-            // For now, just indicate we got audio
-            updateStatus('Audio recorded - text me instead for now 😅', 'connecting');
-            setTimeout(() => {
-                if (isActive) {
-                    updateStatus('🎙️ Listening...', 'connected');
-                }
-            }, 2000);
         }
 
         function endCall() {
@@ -264,17 +354,21 @@
             if (recognition) {
                 recognition.stop();
             }
-            if (mediaRecorder && mediaRecorder.state === 'recording') {
-                mediaRecorder.stop();
-                mediaRecorder.stream.getTracks().forEach(track => track.stop());
-            }
             if (window.speechSynthesis) {
                 window.speechSynthesis.cancel();
             }
             
-            updateStatus('Call ended - refresh to start again', 'idle');
+            updateStatus('Call ended', 'idle');
             document.getElementById('startBtn').style.display = 'block';
             document.getElementById('endBtn').style.display = 'none';
+        }
+        
+        // Load voices on page load
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.getVoices();
+            window.speechSynthesis.onvoiceschanged = () => {
+                window.speechSynthesis.getVoices();
+            };
         }
     </script>
 </body>
