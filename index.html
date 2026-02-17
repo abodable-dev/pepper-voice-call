@@ -146,8 +146,8 @@
         </div>
         
         <div class="info">
-            📱 Works on any device with a microphone<br>
-            🌐 Powered by Claude Opus 4.6
+            📱 Works best in Chrome/Safari<br>
+            🌐 Powered by Claude Opus 4.6 + ElevenLabs
         </div>
     </div>
 
@@ -156,9 +156,10 @@
         let isActive = false;
         let conversationHistory = [];
         const API_URL = 'https://cherly-posthemiplegic-lizzette.ngrok-free.dev/v1/chat/completions';
+        const TTS_URL = 'http://localhost:18790/voice/tts';  // Local TTS server
         const API_TOKEN = '0606e7e42d266711af55d7f720655c5ce242086b8f0ca51a';
         
-        console.log('Voice interface loaded - API:', API_URL);
+        let currentAudio = null; // Track playing audio
 
         function updateStatus(message, type = 'idle') {
             const statusEl = document.getElementById('status');
@@ -221,14 +222,12 @@
                 recognition.onerror = (event) => {
                     console.error('Speech recognition error:', event.error);
                     if (event.error === 'no-speech') {
-                        // Ignore no-speech errors, just keep listening
-                        return;
+                        return; // Ignore, just keep listening
                     }
                     updateStatus(`Speech error: ${event.error}`, 'error');
                 };
                 
                 recognition.onend = () => {
-                    // Auto-restart if still active
                     if (isActive) {
                         try {
                             recognition.start();
@@ -256,7 +255,7 @@
                     content: userMessage
                 });
                 
-                // Call Pepper's API with full conversation history
+                // Call Pepper's API
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: { 
@@ -274,28 +273,26 @@
                 if (!response.ok) {
                     const errorText = await response.text();
                     console.error('API Error:', errorText);
-                    throw new Error(`API returned ${response.status}: ${errorText}`);
+                    throw new Error(`API returned ${response.status}`);
                 }
                 
                 const result = await response.json();
                 console.log('API Response:', result);
                 
-                // Extract assistant message
                 const assistantMessage = result.choices?.[0]?.message;
                 
                 if (!assistantMessage) {
-                    throw new Error('No message in API response');
+                    throw new Error('No message in response');
                 }
                 
-                // Add full assistant message to history (including any tool_use content)
+                // Add full assistant message to history
                 conversationHistory.push(assistantMessage);
                 
-                // Extract text content for display and speech
+                // Extract text content
                 let textContent = '';
                 if (typeof assistantMessage.content === 'string') {
                     textContent = assistantMessage.content;
                 } else if (Array.isArray(assistantMessage.content)) {
-                    // Handle content blocks (tool_use + text)
                     const textBlocks = assistantMessage.content.filter(block => block.type === 'text');
                     textContent = textBlocks.map(block => block.text).join(' ');
                 }
@@ -304,34 +301,9 @@
                     addMessage('assistant', textContent);
                     updateStatus('🗣️ Pepper is speaking...', 'connected');
                     
-                    // Speak response
-                    if ('speechSynthesis' in window) {
-                        const utterance = new SpeechSynthesisUtterance(textContent);
-                        utterance.rate = 1.1;
-                        utterance.pitch = 1.0;
-                        
-                        // Try to find an Australian voice
-                        const voices = window.speechSynthesis.getVoices();
-                        const auVoice = voices.find(v => v.lang.startsWith('en-AU')) || 
-                                       voices.find(v => v.lang.startsWith('en-'));
-                        if (auVoice) utterance.voice = auVoice;
-                        
-                        utterance.onend = () => {
-                            if (isActive) {
-                                updateStatus('🎙️ Listening...', 'connected');
-                            }
-                        };
-                        
-                        window.speechSynthesis.speak(utterance);
-                    } else {
-                        setTimeout(() => {
-                            if (isActive) {
-                                updateStatus('🎙️ Listening...', 'connected');
-                            }
-                        }, 1000);
-                    }
+                    // Play ElevenLabs TTS
+                    await playTTS(textContent);
                 } else {
-                    // No text to speak (tool use only)
                     if (isActive) {
                         updateStatus('🎙️ Listening...', 'connected');
                     }
@@ -350,27 +322,63 @@
             }
         }
 
+        async function playTTS(text) {
+            try {
+                // Stop any currently playing audio
+                if (currentAudio) {
+                    currentAudio.pause();
+                    currentAudio = null;
+                }
+
+                // Get TTS audio from backend
+                const response = await fetch(TTS_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
+                });
+
+                if (!response.ok) {
+                    throw new Error('TTS failed');
+                }
+
+                // Convert response to blob and create audio URL
+                const audioBlob = await response.blob();
+                const audioUrl = URL.createObjectURL(audioBlob);
+                
+                currentAudio = new Audio(audioUrl);
+                currentAudio.onended = () => {
+                    URL.revokeObjectURL(audioUrl);
+                    currentAudio = null;
+                    if (isActive) {
+                        updateStatus('🎙️ Listening...', 'connected');
+                    }
+                };
+                
+                await currentAudio.play();
+                
+            } catch (error) {
+                console.error('TTS error:', error);
+                // Fallback: continue without audio
+                if (isActive) {
+                    updateStatus('🎙️ Listening...', 'connected');
+                }
+            }
+        }
+
         function endCall() {
             isActive = false;
             
             if (recognition) {
                 recognition.stop();
             }
-            if (window.speechSynthesis) {
-                window.speechSynthesis.cancel();
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
             }
             
             updateStatus('Call ended', 'idle');
             document.getElementById('startBtn').style.display = 'block';
             document.getElementById('endBtn').style.display = 'none';
-        }
-        
-        // Load voices on page load
-        if ('speechSynthesis' in window) {
-            window.speechSynthesis.getVoices();
-            window.speechSynthesis.onvoiceschanged = () => {
-                window.speechSynthesis.getVoices();
-            };
         }
     </script>
 </body>
