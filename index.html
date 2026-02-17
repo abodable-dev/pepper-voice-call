@@ -209,27 +209,31 @@
 
         async function sendMessage(text) {
             try {
-                const response = await fetch('/api/chat', {
+                const response = await fetch('https://cherly-posthemiplegic-lizzette.ngrok-free.dev/v1/chat/completions', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer 0606e7e42d266711af55d7f720655c5ce242086b8f0ca51a'
+                    },
                     body: JSON.stringify({ 
-                        message: text,
-                        sessionKey: 'voice-call-' + Date.now()
+                        model: 'anthropic/claude-sonnet-4-5',
+                        messages: [{ role: 'user', content: text }],
+                        stream: false
                     })
                 });
                 
                 const result = await response.json();
                 
-                if (result.response) {
-                    updateStatus(`Pepper: "${result.response}"`, 'connected');
-                    
-                    // Speak response (if supported)
-                    if ('speechSynthesis' in window) {
-                        const utterance = new SpeechSynthesisUtterance(result.response);
-                        utterance.rate = 1.1;
-                        utterance.pitch = 1.0;
-                        window.speechSynthesis.speak(utterance);
-                    }
+                const pepperResponse = result.choices?.[0]?.message?.content || 'Got it!';
+                
+                updateStatus(`Pepper: "${pepperResponse}"`, 'connected');
+                
+                // Speak response (if supported)
+                if ('speechSynthesis' in window) {
+                    const utterance = new SpeechSynthesisUtterance(pepperResponse);
+                    utterance.rate = 1.1;
+                    utterance.pitch = 1.0;
+                    window.speechSynthesis.speak(utterance);
                 }
                 
                 setTimeout(() => {
