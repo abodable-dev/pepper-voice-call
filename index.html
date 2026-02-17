@@ -155,8 +155,9 @@
         let recognition;
         let isActive = false;
         let conversationHistory = [];
-        const API_URL = 'https://cherly-posthemiplegic-lizzette.ngrok-free.dev/v1/chat/completions';
-        const TTS_URL = 'http://localhost:18790/voice/tts';  // Local TTS server
+        const BASE_URL = 'https://cherly-posthemiplegic-lizzette.ngrok-free.dev';
+        const API_URL = `${BASE_URL}/v1/chat/completions`;
+        const TTS_URL = `${BASE_URL}/voice/tts`;
         const API_TOKEN = '0606e7e42d266711af55d7f720655c5ce242086b8f0ca51a';
         
         let currentAudio = null; // Track playing audio
