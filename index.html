@@ -157,6 +157,8 @@
         let conversationHistory = [];
         const API_URL = 'https://cherly-posthemiplegic-lizzette.ngrok-free.dev/v1/chat/completions';
         const API_TOKEN = '0606e7e42d266711af55d7f720655c5ce242086b8f0ca51a';
+        
+        console.log('Voice interface loaded - API:', API_URL);
 
         function updateStatus(message, type = 'idle') {
             const statusEl = document.getElementById('status');
