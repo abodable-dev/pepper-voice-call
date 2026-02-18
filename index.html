@@ -360,6 +360,10 @@
                 const audioUrl = URL.createObjectURL(audioBlob);
                 
                 currentAudio = new Audio(audioUrl);
+                
+                // Pre-load to help iOS Safari
+                currentAudio.load();
+                
                 currentAudio.onended = () => {
                     URL.revokeObjectURL(audioUrl);
                     currentAudio = null;
@@ -381,7 +385,24 @@
                     }
                 };
                 
-                await currentAudio.play();
+                // iOS Safari requires play() promise handling
+                try {
+                    await currentAudio.play();
+                } catch (playError) {
+                    console.error('Play failed:', playError);
+                    // iOS might need user interaction - add tap-to-play fallback
+                    if (playError.name === 'NotAllowedError') {
+                        addMessage('assistant', '(Tap screen to hear audio)');
+                        document.body.addEventListener('click', async () => {
+                            try {
+                                await currentAudio.play();
+                            } catch (e) {
+                                console.error('Still failed:', e);
+                            }
+                        }, { once: true });
+                    }
+                    throw playError;
+                }
                 
             } catch (error) {
                 console.error('TTS error:', error);
