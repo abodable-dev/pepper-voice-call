@@ -309,7 +309,7 @@
                     content: userMessage
                 });
                 
-                // Call Pepper's API
+                // Call Pepper's API with STREAMING
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: { 
@@ -319,58 +319,82 @@
                     body: JSON.stringify({ 
                         model: 'anthropic/claude-3-5-haiku-20241022',
                         messages: conversationHistory,
-                        stream: false,
+                        stream: true,  // Enable streaming!
                         max_tokens: 512
                     })
                 });
                 
                 if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('API Error:', errorText);
                     throw new Error(`API returned ${response.status}`);
                 }
                 
-                const result = await response.json();
-                console.log('API Response:', result);
+                // Stream response and start speaking immediately
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let fullText = '';
+                let buffer = '';
                 
-                const assistantMessage = result.choices?.[0]?.message;
+                updateStatus('🗣️ Pepper is speaking...', 'connected');
                 
-                if (!assistantMessage) {
-                    throw new Error('No message in response');
-                }
-                
-                // Add full assistant message to history
-                conversationHistory.push(assistantMessage);
-                
-                // Extract text content
-                let textContent = '';
-                if (typeof assistantMessage.content === 'string') {
-                    textContent = assistantMessage.content;
-                } else if (Array.isArray(assistantMessage.content)) {
-                    const textBlocks = assistantMessage.content.filter(block => block.type === 'text');
-                    textContent = textBlocks.map(block => block.text).join(' ');
-                }
-                
-                if (textContent) {
-                    addMessage('assistant', textContent);
-                    updateStatus('🗣️ Pepper is speaking...', 'connected');
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
                     
-                    // Play ElevenLabs TTS
-                    await playTTS(textContent);
-                } else {
-                    if (isActive) {
-                        updateStatus('🎙️ Listening...', 'connected');
+                    const chunk = decoder.decode(value, { stream: true });
+                    const lines = chunk.split('\n');
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const data = line.slice(6);
+                            if (data === '[DONE]') continue;
+                            
+                            try {
+                                const parsed = JSON.parse(data);
+                                const content = parsed.choices?.[0]?.delta?.content;
+                                
+                                if (content) {
+                                    fullText += content;
+                                    buffer += content;
+                                    
+                                    // Play audio as soon as we have a complete sentence
+                                    const sentenceEnd = /[.!?]\s/.exec(buffer);
+                                    if (sentenceEnd) {
+                                        const sentence = buffer.slice(0, sentenceEnd.index + 1).trim();
+                                        buffer = buffer.slice(sentenceEnd.index + sentenceEnd[0].length);
+                                        
+                                        if (sentence) {
+                                            playTTS(sentence);
+                                        }
+                                    }
+                                }
+                            } catch (e) {
+                                // Ignore JSON parse errors
+                            }
+                        }
                     }
                 }
+                
+                // Play any remaining text
+                if (buffer.trim()) {
+                    playTTS(buffer.trim());
+                }
+                
+                // Save to history
+                conversationHistory.push({
+                    role: 'assistant',
+                    content: fullText
+                });
+                
+                // Display full message
+                addMessage('assistant', fullText);
                 
             } catch (err) {
                 console.error('Failed to send message:', err);
                 updateStatus(`Error: ${err.message}`, 'error');
-                addMessage('assistant', `Sorry, I had an error: ${err.message}`);
                 
                 setTimeout(() => {
                     if (isActive) {
-                        updateStatus('🎙️ Listening...', 'connected');
+                        updateStatus('Ready! Tap to talk', 'connected');
                     }
                 }, 2000);
             }
