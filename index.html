@@ -240,6 +240,9 @@
                     if (event.error === 'no-speech') {
                         return; // Ignore, just keep listening
                     }
+                    if (event.error === 'aborted') {
+                        return; // Expected when we pause for audio playback
+                    }
                     updateStatus(`Speech error: ${event.error}`, 'error');
                 };
                 
@@ -341,6 +344,16 @@
         async function playTTS(text) {
             try {
                 console.log('🗣️ Fetching TTS for:', text.substring(0, 50));
+                
+                // Pause speech recognition while playing audio
+                if (recognition && isActive) {
+                    try {
+                        recognition.stop();
+                        console.log('⏸️ Paused listening for audio');
+                    } catch (e) {
+                        console.log('Could not stop recognition:', e);
+                    }
+                }
 
                 // Get TTS audio from backend
                 const response = await fetch(TTS_URL, {
@@ -373,16 +386,31 @@
                 currentAudio.onended = () => {
                     console.log('✅ Audio finished');
                     URL.revokeObjectURL(audioUrl);
-                    if (isActive) {
-                        updateStatus('🎙️ Listening...', 'connected');
+                    
+                    // Resume speech recognition after audio finishes
+                    if (isActive && recognition) {
+                        try {
+                            recognition.start();
+                            console.log('▶️ Resumed listening');
+                            updateStatus('🎙️ Listening...', 'connected');
+                        } catch (e) {
+                            console.log('Could not restart recognition:', e);
+                        }
                     }
                 };
                 
                 currentAudio.onerror = (e) => {
                     console.error('❌ Audio error:', currentAudio.error);
                     URL.revokeObjectURL(audioUrl);
-                    if (isActive) {
-                        updateStatus('🎙️ Listening...', 'connected');
+                    
+                    // Resume listening even on error
+                    if (isActive && recognition) {
+                        try {
+                            recognition.start();
+                            updateStatus('🎙️ Listening...', 'connected');
+                        } catch (e) {
+                            console.log('Could not restart recognition:', e);
+                        }
                     }
                 };
                 
@@ -392,8 +420,15 @@
                 
             } catch (error) {
                 console.error('❌ TTS error:', error);
-                if (isActive) {
-                    updateStatus('🎙️ Listening...', 'connected');
+                
+                // Resume listening on error
+                if (isActive && recognition) {
+                    try {
+                        recognition.start();
+                        updateStatus('🎙️ Listening...', 'connected');
+                    } catch (e) {
+                        console.log('Could not restart recognition:', e);
+                    }
                 }
             }
         }
