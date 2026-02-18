@@ -156,6 +156,7 @@
     <script>
         let recognition;
         let isActive = false;
+        let isRecognitionRunning = false; // Track recognition state
         let conversationHistory = [];
         const BASE_URL = 'https://valves-describes-terminals-differential.trycloudflare.com';
         const API_URL = `${BASE_URL}/v1/chat/completions`;
@@ -254,12 +255,18 @@
                     updateStatus(`Speech error: ${event.error}`, 'error');
                 };
                 
+                recognition.onstart = () => {
+                    isRecognitionRunning = true;
+                    console.log('Recognition started');
+                };
+                
                 recognition.onend = () => {
+                    isRecognitionRunning = false;
                     console.log('Recognition ended, isActive:', isActive);
                     if (isActive) {
                         // Safari needs a small delay before restarting
                         setTimeout(() => {
-                            if (isActive) {
+                            if (isActive && !isRecognitionRunning) {
                                 try {
                                     recognition.start();
                                     console.log('Recognition restarted');
@@ -286,7 +293,7 @@
         async function sendMessage(userMessage) {
             try {
                 // Stop recognition while we get response and play audio
-                if (recognition) {
+                if (recognition && isRecognitionRunning) {
                     console.log('Stopping recognition during API call');
                     recognition.stop();
                 }
@@ -378,7 +385,7 @@
                 
                 // Wait a moment for any audio to finish, then restart recognition
                 setTimeout(() => {
-                    if (isActive && recognition) {
+                    if (isActive && recognition && !isRecognitionRunning) {
                         try {
                             console.log('🎤 Restarting recognition after response complete');
                             recognition.start();
@@ -394,7 +401,7 @@
                 updateStatus(`Error: ${err.message}`, 'error');
                 
                 setTimeout(() => {
-                    if (isActive && recognition) {
+                    if (isActive && recognition && !isRecognitionRunning) {
                         try {
                             recognition.start();
                             updateStatus('🎙️ Listening...', 'connected');
@@ -460,6 +467,7 @@
         function endCall() {
             isActive = false;
             isRecording = false;
+            isRecognitionRunning = false;
             
             if (recognition) {
                 recognition.stop();
