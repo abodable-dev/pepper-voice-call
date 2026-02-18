@@ -318,6 +318,38 @@
                 
                 recognition.start();
                 
+                // Watch for transcript being hidden or messages being removed
+                const transcriptDiv = document.getElementById('transcript');
+                const messagesDiv = document.getElementById('messages');
+                
+                const transcriptObserver = new MutationObserver((mutations) => {
+                    mutations.forEach((mutation) => {
+                        if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                            console.log('⚠️ TRANSCRIPT STYLE CHANGED:', transcriptDiv.style.display);
+                            if (transcriptDiv.style.display !== 'block') {
+                                console.error('🚨 Something hid the transcript! Forcing it back');
+                                transcriptDiv.style.display = 'block';
+                            }
+                        }
+                    });
+                });
+                
+                const messagesObserver = new MutationObserver((mutations) => {
+                    mutations.forEach((mutation) => {
+                        if (mutation.type === 'childList') {
+                            console.log('⚠️ MESSAGES CHILDREN CHANGED:', mutation.removedNodes.length, 'removed,', mutation.addedNodes.length, 'added');
+                            if (mutation.removedNodes.length > 0) {
+                                console.error('🚨 Messages were removed!', mutation.removedNodes);
+                            }
+                        }
+                    });
+                });
+                
+                transcriptObserver.observe(transcriptDiv, { attributes: true });
+                messagesObserver.observe(messagesDiv, { childList: true });
+                
+                console.log('👁️ Mutation observers active');
+                
                 // Debug health check - log state every 5 seconds
                 setInterval(() => {
                     if (isActive) {
