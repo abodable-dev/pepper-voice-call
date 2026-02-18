@@ -157,6 +157,7 @@
         let recognition;
         let isActive = false;
         let isRecognitionRunning = false; // Track recognition state
+        let isProcessing = false; // Ignore transcripts while processing
         let conversationHistory = [];
         const BASE_URL = 'https://valves-describes-terminals-differential.trycloudflare.com';
         const API_URL = `${BASE_URL}/v1/chat/completions`;
@@ -231,9 +232,13 @@
                 
                 recognition.onresult = async (event) => {
                     const transcript = event.results[event.results.length - 1][0].transcript.trim();
-                    if (!transcript) return;
+                    if (!transcript || isProcessing) {
+                        console.log('Ignoring transcript (empty or processing):', transcript);
+                        return;
+                    }
                     
                     console.log('Heard:', transcript);
+                    isProcessing = true;
                     addMessage('user', transcript);
                     updateStatus('🤔 Pepper is thinking...', 'connecting');
                     
@@ -262,15 +267,14 @@
                 
                 recognition.onend = () => {
                     isRecognitionRunning = false;
-                    console.log('Recognition ended, isActive:', isActive);
+                    console.log('⚠️ Recognition ended unexpectedly, isActive:', isActive);
                     if (isActive) {
-                        // Safari needs a small delay before restarting
+                        // Only restart if we didn't intentionally end the call
                         setTimeout(() => {
                             if (isActive && !isRecognitionRunning) {
                                 try {
+                                    console.log('Restarting recognition...');
                                     recognition.start();
-                                    console.log('Recognition restarted');
-                                    updateStatus('🎙️ Listening...', 'connected');
                                 } catch (e) {
                                     console.error('Recognition restart failed:', e);
                                     updateStatus(`Error: ${e.message}`, 'error');
@@ -292,12 +296,6 @@
 
         async function sendMessage(userMessage) {
             try {
-                // Stop recognition while we get response and play audio
-                if (recognition && isRecognitionRunning) {
-                    console.log('Stopping recognition during API call');
-                    recognition.stop();
-                }
-                
                 // Add user message to history
                 conversationHistory.push({
                     role: 'user',
@@ -383,31 +381,19 @@
                 // Display full message
                 addMessage('assistant', fullText);
                 
-                // Wait a moment for any audio to finish, then restart recognition
-                setTimeout(() => {
-                    if (isActive && recognition && !isRecognitionRunning) {
-                        try {
-                            console.log('🎤 Restarting recognition after response complete');
-                            recognition.start();
-                            updateStatus('🎙️ Listening...', 'connected');
-                        } catch (e) {
-                            console.log('Recognition restart attempt:', e.message);
-                        }
-                    }
-                }, 500);
+                // Done processing - ready for next input
+                isProcessing = false;
+                updateStatus('🎙️ Listening...', 'connected');
+                console.log('✅ Ready for next input');
                 
             } catch (err) {
                 console.error('Failed to send message:', err);
                 updateStatus(`Error: ${err.message}`, 'error');
+                isProcessing = false;
                 
                 setTimeout(() => {
-                    if (isActive && recognition && !isRecognitionRunning) {
-                        try {
-                            recognition.start();
-                            updateStatus('🎙️ Listening...', 'connected');
-                        } catch (e) {
-                            console.log('Recognition restart after error:', e.message);
-                        }
+                    if (isActive) {
+                        updateStatus('🎙️ Listening...', 'connected');
                     }
                 }, 2000);
             }
@@ -468,6 +454,7 @@
             isActive = false;
             isRecording = false;
             isRecognitionRunning = false;
+            isProcessing = false;
             
             if (recognition) {
                 recognition.stop();
