@@ -197,13 +197,13 @@
             animation: pulse 0.6s ease-in-out infinite;
         }
         
-        /* Bottom Status Area */
+        /* Bottom Status Area - CarPlay Style */
         .input-container {
             position: fixed;
             bottom: 0;
             left: 0;
             right: 0;
-            padding: 24px;
+            padding: 48px 24px 32px;
             background: linear-gradient(to top, #F8F9FA, #F8F9FA 70%, transparent);
             display: flex;
             flex-direction: column;
@@ -211,36 +211,42 @@
             justify-content: center;
         }
         .mic-btn {
-            width: 80px;
-            height: 80px;
-            background: #3b82f6;
+            width: 120px;
+            height: 120px;
+            background: #2563eb;
             border: none;
-            border-radius: 50%;
+            border-radius: 36px;
             cursor: pointer;
             transition: all 0.2s;
             color: white;
-            box-shadow: 0 10px 30px rgba(59,130,246,0.3);
+            box-shadow: 0 0 40px rgba(37,99,235,0.4);
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-bottom: 12px;
+            margin-bottom: 16px;
             user-select: none;
             -webkit-user-select: none;
             -webkit-tap-highlight-color: transparent;
         }
         .mic-btn svg {
-            width: 36px;
-            height: 36px;
+            width: 48px;
+            height: 48px;
         }
         .mic-btn:active {
             transform: scale(0.95);
         }
         .mic-btn.listening {
-            background: #22c55e;
-            animation: pulse 2s ease-in-out infinite;
+            background: #dc2626;
+            box-shadow: 0 0 40px rgba(220,38,38,0.4);
+            animation: pulse 1.5s ease-in-out infinite;
         }
         .mic-btn.speaking {
-            background: #ef4444;
+            background: #16a34a;
+            box-shadow: 0 0 40px rgba(22,163,74,0.4);
+        }
+        .mic-btn.thinking {
+            background: #ca8a04;
+            box-shadow: 0 0 40px rgba(202,138,4,0.4);
         }
         .mic-instruction {
             font-size: 13px;
@@ -514,7 +520,7 @@
             partialTranscript = '';
             
             micBtn.classList.remove('listening');
-            micBtn.classList.add('speaking');
+            micBtn.classList.add('thinking');
             setStatus('thinking', 'Thinking...');
             micInstruction.textContent = 'Processing...';
             interruptHint.style.display = 'block';
@@ -543,7 +549,7 @@
             clearTimeout(silenceTimer);
             
             // Ready to listen again
-            micBtn.classList.remove('speaking');
+            micBtn.classList.remove('speaking', 'thinking');
             micBtn.classList.add('listening');
             setStatus('listening', 'Listening...');
             micInstruction.textContent = 'Listening... just talk naturally';
@@ -592,6 +598,8 @@
 
                 setStatus('speaking', 'Speaking...');
                 isSpeaking = true;
+                micBtn.classList.remove('thinking');
+                micBtn.classList.add('speaking');
                 animateWaveform(true);
 
                 while (true) {
@@ -642,7 +650,7 @@
                         animateWaveform(false);
                         
                         // Back to listening
-                        micBtn.classList.remove('speaking');
+                        micBtn.classList.remove('speaking', 'thinking');
                         micBtn.classList.add('listening');
                         setStatus('listening', 'Listening...');
                         micInstruction.textContent = 'Listening... just talk naturally';
