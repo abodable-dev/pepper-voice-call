@@ -350,7 +350,8 @@
         let conversationHistory = [];
         let currentAudio = null;
         let currentResponse = null;
-        let pendingAudioChunks = 0;
+        let audioQueue = [];
+        let isPlayingQueue = false;
 
         // DOM
         const micBtn = document.getElementById('micBtn');
@@ -486,7 +487,7 @@
 
         // Send message
         async function sendMessage(userMessage) {
-            pendingAudioChunks = 0;
+            audioQueue = []; // Clear any old audio
             conversationHistory.push({ role: 'user', content: userMessage });
 
             try {
@@ -555,15 +556,17 @@
                 responseText.textContent = fullText;
                 responseSection.style.display = 'block';
 
-                // Wait for audio to finish
+                // Wait for audio queue to finish
                 const checkDone = () => {
-                    if (pendingAudioChunks === 0) {
+                    if (audioQueue.length === 0 && !isPlayingQueue) {
                         isProcessing = false;
                         isSpeaking = false;
                         animateWaveform(false);
                         setStatus('', 'Ready! Speak now');
+                        micInstruction.textContent = 'Hold to talk';
                         console.log('Ready for next input');
                     } else {
+                        console.log('Waiting for audio... Queue:', audioQueue.length, 'Playing:', isPlayingQueue);
                         setTimeout(checkDone, 500);
                     }
                 };
@@ -576,7 +579,7 @@
             }
         }
 
-        // Play TTS
+        // Play TTS - add to queue
         async function playTTS(text) {
             try {
                 const response = await fetch(TTS_URL, {
@@ -588,28 +591,47 @@
                 if (!response.ok) throw new Error(`TTS error: ${response.status}`);
 
                 const audioBlob = await response.blob();
-                const audioUrl = URL.createObjectURL(audioBlob);
-
-                if (!currentAudio) currentAudio = new Audio();
-                currentAudio.onended = null;
-                currentAudio.onerror = null;
-                currentAudio.src = audioUrl;
-
-                currentAudio.onended = () => {
-                    URL.revokeObjectURL(audioUrl);
-                    pendingAudioChunks--;
-                };
-
-                currentAudio.onerror = () => {
-                    URL.revokeObjectURL(audioUrl);
-                    pendingAudioChunks--;
-                };
-
-                pendingAudioChunks++;
-                await currentAudio.play();
+                audioQueue.push(audioBlob);
+                console.log('Added to queue. Queue length:', audioQueue.length);
+                
+                // Start playing if not already playing
+                if (!isPlayingQueue) {
+                    playNextInQueue();
+                }
             } catch (err) {
                 console.error('TTS error:', err);
             }
+        }
+        
+        // Play next audio chunk from queue
+        async function playNextInQueue() {
+            if (audioQueue.length === 0) {
+                isPlayingQueue = false;
+                console.log('Queue empty, playback complete');
+                return;
+            }
+            
+            isPlayingQueue = true;
+            const audioBlob = audioQueue.shift();
+            const audioUrl = URL.createObjectURL(audioBlob);
+            
+            if (!currentAudio) currentAudio = new Audio();
+            
+            currentAudio.onended = () => {
+                console.log('Chunk finished. Remaining:', audioQueue.length);
+                URL.revokeObjectURL(audioUrl);
+                playNextInQueue(); // Play next
+            };
+            
+            currentAudio.onerror = () => {
+                console.error('Audio error, skipping to next');
+                URL.revokeObjectURL(audioUrl);
+                playNextInQueue(); // Skip to next
+            };
+            
+            currentAudio.src = audioUrl;
+            await currentAudio.play();
+            console.log('Playing chunk');
         }
 
         // Animate waveform
@@ -625,15 +647,23 @@
         // Play response
         playBtn.addEventListener('click', async () => {
             if (!currentResponse) return;
-            if (isSpeaking) return;
+            if (isPlayingQueue) return;
 
             isSpeaking = true;
             animateWaveform(true);
+            audioQueue = []; // Clear queue
             await playTTS(currentResponse);
-            setTimeout(() => {
-                isSpeaking = false;
-                animateWaveform(false);
-            }, 1000);
+            
+            // Wait for playback to finish
+            const checkPlayback = () => {
+                if (!isPlayingQueue && audioQueue.length === 0) {
+                    isSpeaking = false;
+                    animateWaveform(false);
+                } else {
+                    setTimeout(checkPlayback, 500);
+                }
+            };
+            setTimeout(checkPlayback, 500);
         });
 
         // Hold to talk - touch events
