@@ -209,6 +209,9 @@
 
         async function initCall() {
             try {
+                const messagesDiv = document.getElementById('messages');
+                const transcriptDiv = document.getElementById('transcript');
+                
                 updateStatus('Requesting microphone access...', 'connecting');
                 
                 // Create persistent audio element from user gesture
@@ -237,16 +240,13 @@
                 updateStatus('🎙️ Listening... just start talking!', 'connected');
                 document.getElementById('startBtn').style.display = 'none';
                 document.getElementById('callControls').style.display = 'block';
-                document.getElementById('transcript').style.display = 'block'; // Show transcript from the start
+                transcriptDiv.style.display = 'block';
+                messagesDiv.innerHTML = '<div style="text-align:center;color:#999;padding:20px;">Your conversation will appear here...</div>';
                 isActive = true;
                 
                 // Initialize conversation
                 conversationHistory = [];
-                const messagesDiv = document.getElementById('messages');
-                const transcriptDiv = document.getElementById('transcript');
-                messagesDiv.innerHTML = '<div style="text-align:center;color:#999;padding:20px;">Your conversation will appear here...</div>';
-                transcriptDiv.style.display = 'block';
-                console.log('🎬 Call started - transcript area should be visible with placeholder');
+                console.log('🎬 Call started - transcript visible with placeholder');
                 
                 // Setup speech recognition
                 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -319,9 +319,6 @@
                 recognition.start();
                 
                 // Watch for transcript being hidden or messages being removed
-                const transcriptDiv = document.getElementById('transcript');
-                const messagesDiv = document.getElementById('messages');
-                
                 const transcriptObserver = new MutationObserver((mutations) => {
                     mutations.forEach((mutation) => {
                         if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
@@ -353,8 +350,6 @@
                 // Debug health check - log state every 5 seconds
                 setInterval(() => {
                     if (isActive) {
-                        const messagesDiv = document.getElementById('messages');
-                        const transcriptDiv = document.getElementById('transcript');
                         console.log('📊 Health check - isActive:', isActive, 'isProcessing:', isProcessing, 'isRecognitionRunning:', isRecognitionRunning);
                         console.log('📊 Messages count:', messagesDiv.children.length, 'Transcript visible:', transcriptDiv.style.display);
                         
