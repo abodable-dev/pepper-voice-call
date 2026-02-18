@@ -180,7 +180,7 @@
         
         <div class="info">
             📱 Works best in Chrome/Safari<br>
-            🌐 Powered by Claude Sonnet 3.5 + ElevenLabs
+            🌐 Powered by Claude Haiku 3.5 + ElevenLabs
         </div>
     </div>
 
@@ -317,10 +317,10 @@
                         'Authorization': `Bearer ${API_TOKEN}`
                     },
                     body: JSON.stringify({ 
-                        model: 'anthropic/claude-sonnet-3.5-20241022',
+                        model: 'anthropic/claude-3-5-haiku-20241022',
                         messages: conversationHistory,
                         stream: false,
-                        max_tokens: 1024
+                        max_tokens: 512
                     })
                 });
                 
