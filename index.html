@@ -2,385 +2,444 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Call Pepper 🌶️</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #F8F9FA;
             min-height: 100vh;
+            overflow: hidden;
+        }
+        
+        /* Header */
+        .header {
+            padding: 56px 24px 16px;
+            background: rgba(255,255,255,0.6);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(0,0,0,0.03);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .avatar {
+            width: 36px;
+            height: 36px;
+            background: white;
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 20px;
-        }
-        .container {
-            background: white;
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            max-width: 600px;
-            width: 100%;
-        }
-        h1 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 10px;
-            font-size: 32px;
-        }
-        .emoji {
-            text-align: center;
-            font-size: 80px;
-            margin: 20px 0;
-        }
-        .status {
-            text-align: center;
-            padding: 15px;
-            border-radius: 10px;
-            margin: 20px 0;
-            font-weight: 500;
-            font-size: 16px;
-        }
-        .status.idle { background: #f0f0f0; color: #666; }
-        .status.connecting { background: #fff3cd; color: #856404; }
-        .status.connected { background: #d4edda; color: #155724; }
-        .status.error { background: #f8d7da; color: #721c24; }
-        button {
-            width: 100%;
-            padding: 20px;
             font-size: 18px;
-            border: none;
-            border-radius: 12px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.3s;
-            margin: 10px 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            border: 1px solid rgba(0,0,0,0.05);
         }
-        button.start {
-            background: #28a745;
-            color: white;
+        .header-info {
+            display: flex;
+            flex-direction: column;
         }
-        button.start:hover:not(:disabled) {
-            background: #218838;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(40,167,69,0.3);
-        }
-        button.end {
-            background: #dc3545;
-            color: white;
-        }
-        button.end:hover {
-            background: #c82333;
-        }
-        button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        .transcript {
-            margin-top: 20px;
-            min-height: 100px;
-            max-height: 300px;
-            overflow-y: auto;
-            padding: 15px;
-            background: #f8f9fa;
-            border-radius: 10px;
-            border: 2px solid #007bff;
-        }
-        .message {
-            margin: 10px 0;
-            padding: 12px;
-            border-radius: 8px;
-            animation: fadeIn 0.3s;
-        }
-        .message.user {
-            background: #e3f2fd;
-            text-align: right;
-        }
-        .message.assistant {
-            background: #f3e5f5;
-        }
-        .message strong {
-            display: block;
-            margin-bottom: 5px;
-            font-size: 12px;
-            opacity: 0.7;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .info {
-            background: #e7f3ff;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 20px;
+        .header-title {
+            font-weight: bold;
+            color: rgba(0,0,0,0.8);
             font-size: 14px;
-            color: #004085;
-            text-align: center;
+            letter-spacing: -0.01em;
         }
-        @media (max-width: 600px) {
-            .container { padding: 30px 20px; }
-            h1 { font-size: 28px; }
-            .emoji { font-size: 60px; }
+        .status-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #3b82f6;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        .status-dot.listening { background: #ef4444; }
+        .status-dot.speaking { background: #22c55e; }
+        .status-dot.thinking { background: #eab308; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .status-text {
+            font-size: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: rgba(0,0,0,0.4);
+        }
+        
+        /* Main Content */
+        .content {
+            height: calc(100vh - 300px);
+            overflow-y: auto;
+            padding: 32px 24px 128px;
+        }
+        .query-section {
+            margin-bottom: 48px;
+        }
+        .query-label {
+            font-size: 9px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            color: rgba(0,0,0,0.3);
+            margin-bottom: 12px;
+        }
+        .query-text {
+            font-size: 34px;
+            line-height: 1.2;
+            font-weight: bold;
+            color: rgba(0,0,0,0.9);
+            letter-spacing: -0.02em;
+        }
+        .query-text.placeholder {
+            color: rgba(0,0,0,0.3);
+            font-style: italic;
+        }
+        
+        .response-section {
+            margin-top: 48px;
+        }
+        .response-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+            color: rgba(0,0,0,0.5);
+        }
+        .response-label svg {
+            width: 14px;
+            height: 14px;
+        }
+        .response-label span {
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+        }
+        .response-card {
+            background: white;
+            border-radius: 28px;
+            padding: 28px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+            border: 1px solid rgba(0,0,0,0.03);
+        }
+        .response-text {
+            color: rgba(0,0,0,0.8);
+            font-weight: 500;
+            line-height: 1.6;
+            font-size: 17px;
+            white-space: pre-wrap;
+        }
+        .waveform {
+            margin-top: 32px;
+            background: #F8F9FA;
+            padding: 16px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            border: 1px solid rgba(0,0,0,0.03);
+        }
+        .play-btn {
+            width: 44px;
+            height: 44px;
+            background: black;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.1s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        .play-btn:active {
+            transform: scale(0.9);
+        }
+        .bars {
+            flex: 1;
+            display: flex;
+            align-items: flex-end;
+            gap: 2px;
+            height: 28px;
+        }
+        .bar {
+            flex: 1;
+            background: rgba(0,0,0,0.08);
+            border-radius: 4px;
+            transition: all 0.3s;
+        }
+        .bar.active {
+            background: rgba(59,130,246,0.4);
+            animation: pulse 0.6s ease-in-out infinite;
+        }
+        
+        /* Bottom Input */
+        .input-container {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 24px;
+            background: linear-gradient(to top, #F8F9FA, #F8F9FA, transparent);
+            padding-top: 48px;
+        }
+        .input-pill {
+            background: white;
+            border-radius: 32px;
+            padding: 8px;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.06);
+            border: 1px solid rgba(0,0,0,0.04);
+            max-width: 768px;
+            margin: 0 auto;
+        }
+        .mic-btn {
+            padding: 12px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            border-radius: 50%;
+            transition: all 0.2s;
+            color: #3b82f6;
+        }
+        .mic-btn:active {
+            transform: scale(0.9);
+        }
+        .mic-btn.listening {
+            color: #ef4444;
+            background: rgba(239,68,68,0.1);
+            animation: pulse 1s ease-in-out infinite;
+        }
+        .footer-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 24px 8px;
+            max-width: 768px;
+            margin: 0 auto;
+        }
+        .footer-info p {
+            font-size: 10px;
+            font-weight: bold;
+            color: rgba(0,0,0,0.2);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        .footer-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .footer-status .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #22c55e;
+            box-shadow: 0 0 8px rgba(34,197,94,0.4);
+        }
+        .footer-status span {
+            font-size: 10px;
+            font-weight: bold;
+            color: rgba(0,0,0,0.3);
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+        }
+        
+        /* Utility */
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Call Pepper</h1>
-        <div class="emoji">🌶️📞</div>
-        
-        <div id="status" class="status idle">
-            Ready to start voice call
+    <!-- Header -->
+    <div class="header">
+        <div class="header-left">
+            <div class="avatar">🌶️</div>
+            <div class="header-info">
+                <div class="header-title">Pepper</div>
+                <div class="status-row">
+                    <div class="status-dot" id="statusDot"></div>
+                    <div class="status-text" id="statusText">Ready to help</div>
+                </div>
+            </div>
         </div>
-        
-        <button id="startBtn" class="start" onclick="initCall()">
-            🎤 Start Voice Call
-        </button>
-        
-        <div id="callControls" style="display:none;">
-            <button id="endBtn" class="end" onclick="endCall()">
-                ❌ End Call
+    </div>
+
+    <!-- Content -->
+    <div class="content hide-scrollbar" id="content">
+        <div class="query-section">
+            <div class="query-label">Current Focus</div>
+            <div class="query-text placeholder" id="queryText">
+                Tap the mic to speak...
+            </div>
+        </div>
+
+        <div class="response-section" id="responseSection" style="display:none;">
+            <div class="response-label">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path>
+                </svg>
+                <span>Pepper's Response</span>
+            </div>
+            <div class="response-card">
+                <div class="response-text" id="responseText"></div>
+                <div class="waveform">
+                    <button class="play-btn" id="playBtn">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
+                            <path d="M8 5v14l11-7z"/>
+                        </svg>
+                    </button>
+                    <div class="bars" id="waveformBars"></div>
+                    <span style="font-size:11px; font-weight:bold; color:rgba(0,0,0,0.3);" id="waveformText">Tap to play</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Input -->
+    <div class="input-container">
+        <div class="input-pill">
+            <button class="mic-btn" id="micBtn">
+                <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                    <line x1="12" y1="19" x2="12" y2="23"></line>
+                    <line x1="8" y1="23" x2="16" y2="23"></line>
+                </svg>
             </button>
         </div>
-        
-        <div id="transcript" class="transcript" style="display:none;">
-            <div id="messages"></div>
-        </div>
-        
-        <div class="info">
-            📱 Works best in Chrome/Safari<br>
-            🌐 Powered by Claude Haiku 3.5 + ElevenLabs
+        <div class="footer-info">
+            <p>Powered by Claude Haiku 3.5</p>
+            <div class="footer-status">
+                <div class="dot"></div>
+                <span>Encrypted</span>
+            </div>
         </div>
     </div>
 
     <script>
-        let recognition;
-        let isActive = false;
-        let isRecognitionRunning = false; // Track recognition state
-        let isProcessing = false; // Ignore transcripts while processing
-        let conversationHistory = [];
+        // Config
         const BASE_URL = 'https://valves-describes-terminals-differential.trycloudflare.com';
         const API_URL = `${BASE_URL}/v1/chat/completions`;
         const TTS_URL = `${BASE_URL}/voice/tts`;
         const API_TOKEN = '0606e7e42d266711af55d7f720655c5ce242086b8f0ca51a';
-        
-        let currentAudio = null; // Persistent audio element
-        let isAudioReady = false;
-        let isRecording = false;
-        let recordingChunks = [];
-        let pendingAudioChunks = 0; // Track audio chunks being played
 
-        function updateStatus(message, type = 'idle') {
-            const statusEl = document.getElementById('status');
-            statusEl.textContent = message;
-            statusEl.className = `status ${type}`;
+        // State
+        let recognition;
+        let isActive = false;
+        let isListening = false;
+        let isSpeaking = false;
+        let isProcessing = false;
+        let conversationHistory = [];
+        let currentAudio = null;
+        let currentResponse = null;
+        let pendingAudioChunks = 0;
+
+        // DOM
+        const micBtn = document.getElementById('micBtn');
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        const queryText = document.getElementById('queryText');
+        const responseSection = document.getElementById('responseSection');
+        const responseText = document.getElementById('responseText');
+        const playBtn = document.getElementById('playBtn');
+        const waveformBars = document.getElementById('waveformBars');
+        const waveformText = document.getElementById('waveformText');
+
+        // Generate waveform bars
+        const barHeights = [2, 4, 7, 3, 5, 8, 6, 4, 2, 4, 7, 3, 5, 2, 4, 7, 3, 5, 8, 6, 4, 2];
+        barHeights.forEach(h => {
+            const bar = document.createElement('div');
+            bar.className = 'bar';
+            bar.style.height = `${h * 10}%`;
+            waveformBars.appendChild(bar);
+        });
+
+        // Update status
+        function setStatus(state, text) {
+            statusDot.className = 'status-dot ' + state;
+            statusText.textContent = text;
         }
 
-        function addMessage(role, content) {
-            const messagesDiv = document.getElementById('messages');
-            const transcriptDiv = document.getElementById('transcript');
-            
-            console.log('📝 Adding message:', role, content.substring(0, 50));
-            console.log('📝 Messages div children count before:', messagesDiv.children.length);
-            
-            // Clear placeholder if this is the first real message
-            if (messagesDiv.children.length === 1 && messagesDiv.children[0].textContent.includes('conversation will appear')) {
-                console.log('🗑️ Clearing placeholder');
-                messagesDiv.innerHTML = '';
-            }
-            
-            transcriptDiv.style.display = 'block';
-            
-            const msgDiv = document.createElement('div');
-            msgDiv.className = `message ${role}`;
-            msgDiv.innerHTML = `<strong>${role === 'user' ? 'You' : 'Pepper'}</strong>${content}`;
-            messagesDiv.appendChild(msgDiv);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
-            
-            console.log('📝 Messages div children count after:', messagesDiv.children.length);
-            
-            // Force transcript to stay visible
-            setTimeout(() => {
-                transcriptDiv.style.display = 'block';
-                console.log('🔒 Transcript visibility enforced');
-            }, 100);
-        }
-
-        async function initCall() {
-            try {
-                const messagesDiv = document.getElementById('messages');
-                const transcriptDiv = document.getElementById('transcript');
-                
-                updateStatus('Requesting microphone access...', 'connecting');
-                
-                // Create persistent audio element from user gesture
-                if (!currentAudio) {
-                    currentAudio = new Audio();
-                    // Play silent audio to unlock iOS
-                    currentAudio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
-                    try {
-                        await currentAudio.play();
-                        isAudioReady = true;
-                        console.log('✅ Audio element ready');
-                    } catch (e) {
-                        console.log('⚠️ Audio unlock failed:', e);
-                    }
-                }
-                
-                // Check for speech recognition support
-                if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
-                    updateStatus('Speech recognition not supported in this browser', 'error');
+        // Start recognition
+        async function startRecognition() {
+            if (!recognition) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                if (!SpeechRecognition) {
+                    alert('Speech recognition not supported in this browser');
                     return;
                 }
-                
-                // Request microphone
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                
-                updateStatus('🎙️ Listening... just start talking!', 'connected');
-                document.getElementById('startBtn').style.display = 'none';
-                document.getElementById('callControls').style.display = 'block';
-                transcriptDiv.style.display = 'block';
-                messagesDiv.innerHTML = '<div style="text-align:center;color:#999;padding:20px;">Your conversation will appear here...</div>';
-                isActive = true;
-                
-                // Initialize conversation
-                conversationHistory = [];
-                console.log('🎬 Call started - transcript visible with placeholder');
-                
-                // Setup speech recognition
-                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
                 recognition = new SpeechRecognition();
                 recognition.continuous = true;
                 recognition.interimResults = false;
                 recognition.lang = 'en-AU';
-                
+
                 recognition.onresult = async (event) => {
                     const transcript = event.results[event.results.length - 1][0].transcript.trim();
-                    console.log('🎤 Recognition fired. Transcript:', transcript, 'isProcessing:', isProcessing);
-                    
-                    if (!transcript) {
-                        console.log('⚠️ Empty transcript, ignoring');
-                        return;
-                    }
-                    
-                    if (isProcessing) {
-                        console.log('⚠️ Already processing, ignoring:', transcript);
-                        return;
-                    }
-                    
-                    console.log('✅ Heard:', transcript);
+                    if (!transcript || isProcessing) return;
+
+                    console.log('Heard:', transcript);
                     isProcessing = true;
-                    addMessage('user', transcript);
-                    updateStatus('🤔 Pepper is thinking...', 'connecting');
-                    
+                    queryText.textContent = transcript;
+                    queryText.classList.remove('placeholder');
+                    setStatus('thinking', 'Thinking...');
+
                     await sendMessage(transcript);
                 };
-                
-                recognition.onerror = (event) => {
-                    console.error('Speech recognition error:', event.error);
-                    if (event.error === 'no-speech') {
-                        return; // Ignore, just keep listening
+
+                recognition.onerror = (e) => {
+                    console.error('Recognition error:', e.error);
+                    if (e.error !== 'no-speech' && e.error !== 'aborted') {
+                        setStatus('', 'Error: ' + e.error);
                     }
-                    if (event.error === 'aborted') {
-                        return; // Expected when we pause for audio playback
-                    }
-                    if (event.error === 'audio-capture') {
-                        console.log('Audio capture error - will retry');
-                        return; // Safari issue, will restart in onend
-                    }
-                    updateStatus(`Speech error: ${event.error}`, 'error');
                 };
-                
-                recognition.onstart = () => {
-                    isRecognitionRunning = true;
-                    console.log('Recognition started');
-                };
-                
+
                 recognition.onend = () => {
-                    isRecognitionRunning = false;
-                    console.log('⚠️ Recognition ended unexpectedly, isActive:', isActive);
-                    if (isActive) {
-                        // Only restart if we didn't intentionally end the call
-                        setTimeout(() => {
-                            if (isActive && !isRecognitionRunning) {
-                                try {
-                                    console.log('Restarting recognition...');
-                                    recognition.start();
-                                } catch (e) {
-                                    console.error('Recognition restart failed:', e);
-                                    updateStatus(`Error: ${e.message}`, 'error');
-                                }
-                            }
-                        }, 100);
+                    if (isActive && !isListening) {
+                        setTimeout(() => { if (isActive) recognition.start(); }, 100);
                     }
                 };
+            }
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                if (!currentAudio) {
+                    currentAudio = new Audio();
+                    currentAudio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+                    try { await currentAudio.play(); } catch (e) {}
+                }
                 
+                isActive = true;
                 recognition.start();
-                
-                // Watch for transcript being hidden or messages being removed
-                const transcriptObserver = new MutationObserver((mutations) => {
-                    mutations.forEach((mutation) => {
-                        if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
-                            console.log('⚠️ TRANSCRIPT STYLE CHANGED:', transcriptDiv.style.display);
-                            if (transcriptDiv.style.display !== 'block') {
-                                console.error('🚨 Something hid the transcript! Forcing it back');
-                                transcriptDiv.style.display = 'block';
-                            }
-                        }
-                    });
-                });
-                
-                const messagesObserver = new MutationObserver((mutations) => {
-                    mutations.forEach((mutation) => {
-                        if (mutation.type === 'childList') {
-                            console.log('⚠️ MESSAGES CHILDREN CHANGED:', mutation.removedNodes.length, 'removed,', mutation.addedNodes.length, 'added');
-                            if (mutation.removedNodes.length > 0) {
-                                console.error('🚨 Messages were removed!', mutation.removedNodes);
-                            }
-                        }
-                    });
-                });
-                
-                transcriptObserver.observe(transcriptDiv, { attributes: true });
-                messagesObserver.observe(messagesDiv, { childList: true });
-                
-                console.log('👁️ Mutation observers active');
-                
-                // Debug health check - log state every 5 seconds
-                setInterval(() => {
-                    if (isActive) {
-                        console.log('📊 Health check - isActive:', isActive, 'isProcessing:', isProcessing, 'isRecognitionRunning:', isRecognitionRunning);
-                        console.log('📊 Messages count:', messagesDiv.children.length, 'Transcript visible:', transcriptDiv.style.display);
-                        
-                        // Force transcript to stay visible if we have messages
-                        if (messagesDiv.children.length > 0 && transcriptDiv.style.display !== 'block') {
-                            console.log('⚠️ Transcript was hidden! Forcing it back visible');
-                            transcriptDiv.style.display = 'block';
-                        }
-                    }
-                }, 5000);
-                
+                setStatus('listening', 'Listening...');
+                micBtn.classList.add('listening');
+                isListening = true;
             } catch (err) {
-                updateStatus(`Error: ${err.message}`, 'error');
-                console.error(err);
-                document.getElementById('startBtn').style.display = 'block';
-                document.getElementById('endBtn').style.display = 'none';
+                console.error('Mic error:', err);
+                alert('Microphone access denied');
             }
         }
 
+        // Send message
         async function sendMessage(userMessage) {
+            pendingAudioChunks = 0;
+            conversationHistory.push({ role: 'user', content: userMessage });
+
             try {
-                pendingAudioChunks = 0; // Reset audio counter for new response
-                
-                // Add user message to history
-                conversationHistory.push({
-                    role: 'user',
-                    content: userMessage
-                });
-                
-                // Call Pepper's API with STREAMING
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: { 
@@ -390,181 +449,154 @@
                     body: JSON.stringify({ 
                         model: 'anthropic/claude-3-5-haiku-20241022',
                         messages: conversationHistory,
-                        stream: true,  // Enable streaming!
+                        stream: true,
                         max_tokens: 512
                     })
                 });
-                
-                if (!response.ok) {
-                    throw new Error(`API returned ${response.status}`);
-                }
-                
-                // Stream response and start speaking immediately
+
+                if (!response.ok) throw new Error(`API error: ${response.status}`);
+
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
                 let fullText = '';
                 let buffer = '';
-                
-                updateStatus('🗣️ Pepper is speaking...', 'connected');
-                
+
+                setStatus('speaking', 'Speaking...');
+                isSpeaking = true;
+                animateWaveform(true);
+
                 while (true) {
                     const { done, value } = await reader.read();
                     if (done) break;
-                    
+
                     const chunk = decoder.decode(value, { stream: true });
                     const lines = chunk.split('\n');
-                    
+
                     for (const line of lines) {
                         if (line.startsWith('data: ')) {
                             const data = line.slice(6);
                             if (data === '[DONE]') continue;
-                            
+
                             try {
                                 const parsed = JSON.parse(data);
                                 const content = parsed.choices?.[0]?.delta?.content;
-                                
+
                                 if (content) {
                                     fullText += content;
                                     buffer += content;
-                                    
-                                    // Play audio as soon as we have a complete sentence
+
                                     const sentenceEnd = /[.!?]\s/.exec(buffer);
                                     if (sentenceEnd) {
                                         const sentence = buffer.slice(0, sentenceEnd.index + 1).trim();
                                         buffer = buffer.slice(sentenceEnd.index + sentenceEnd[0].length);
-                                        
-                                        if (sentence) {
-                                            playTTS(sentence);
-                                        }
+                                        if (sentence) playTTS(sentence);
                                     }
                                 }
-                            } catch (e) {
-                                // Ignore JSON parse errors
-                            }
+                            } catch (e) {}
                         }
                     }
                 }
+
+                if (buffer.trim()) playTTS(buffer.trim());
+
+                conversationHistory.push({ role: 'assistant', content: fullText });
+                currentResponse = fullText;
                 
-                // Play any remaining text
-                if (buffer.trim()) {
-                    playTTS(buffer.trim());
-                }
-                
-                // Save to history
-                conversationHistory.push({
-                    role: 'assistant',
-                    content: fullText
-                });
-                
-                // Display full message
-                addMessage('assistant', fullText);
-                
-                // Wait for audio to finish before accepting new input
-                console.log('⏳ Response complete, waiting for audio to finish... Pending chunks:', pendingAudioChunks);
-                const checkAudioDone = () => {
+                responseText.textContent = fullText;
+                responseSection.style.display = 'block';
+
+                // Wait for audio to finish
+                const checkDone = () => {
                     if (pendingAudioChunks === 0) {
-                        console.log('🔓 All audio finished, setting isProcessing = false');
                         isProcessing = false;
-                        updateStatus('🎙️ Ready! Speak now', 'connected');
-                        console.log('✅ Ready for next input. isProcessing:', isProcessing);
+                        isSpeaking = false;
+                        animateWaveform(false);
+                        setStatus('', 'Ready! Speak now');
+                        console.log('Ready for next input');
                     } else {
-                        console.log('⏳ Still playing audio, checking again... Pending:', pendingAudioChunks);
-                        setTimeout(checkAudioDone, 500);
+                        setTimeout(checkDone, 500);
                     }
                 };
-                setTimeout(checkAudioDone, 500); // Start checking after brief delay
-                
+                setTimeout(checkDone, 500);
+
             } catch (err) {
-                console.error('Failed to send message:', err);
-                updateStatus(`Error: ${err.message}`, 'error');
+                console.error('Message error:', err);
+                setStatus('', 'Error');
                 isProcessing = false;
-                
-                setTimeout(() => {
-                    if (isActive) {
-                        updateStatus('🎙️ Listening...', 'connected');
-                    }
-                }, 2000);
             }
         }
 
+        // Play TTS
         async function playTTS(text) {
             try {
-                console.log('🗣️ Fetching TTS for:', text.substring(0, 50));
-
-                // Get TTS audio from backend
                 const response = await fetch(TTS_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ text })
                 });
 
-                if (!response.ok) {
-                    throw new Error(`TTS HTTP ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`TTS error: ${response.status}`);
 
                 const audioBlob = await response.blob();
-                console.log('✅ Got audio blob:', audioBlob.size, 'bytes');
-                
-                // Reuse the persistent audio element (keeps user gesture chain)
                 const audioUrl = URL.createObjectURL(audioBlob);
-                
-                if (!currentAudio) {
-                    currentAudio = new Audio();
-                }
-                
-                // Remove old listeners
+
+                if (!currentAudio) currentAudio = new Audio();
                 currentAudio.onended = null;
                 currentAudio.onerror = null;
-                
-                // Set new source
                 currentAudio.src = audioUrl;
-                
+
                 currentAudio.onended = () => {
-                    console.log('✅ Audio chunk finished. isProcessing:', isProcessing);
                     URL.revokeObjectURL(audioUrl);
                     pendingAudioChunks--;
-                    console.log('📊 Pending audio chunks:', pendingAudioChunks);
-                    
-                    // If no more audio and processing is done, enable mic
-                    if (pendingAudioChunks === 0 && !isProcessing) {
-                        updateStatus('🎙️ Ready! Speak now', 'connected');
-                        console.log('✅ All audio done, mic ready');
-                    }
                 };
-                
-                currentAudio.onerror = (e) => {
-                    console.error('❌ Audio error:', currentAudio.error);
+
+                currentAudio.onerror = () => {
                     URL.revokeObjectURL(audioUrl);
+                    pendingAudioChunks--;
                 };
-                
-                // Play on the same Audio element
+
                 pendingAudioChunks++;
-                console.log('▶️ Playing chunk. Pending:', pendingAudioChunks);
                 await currentAudio.play();
-                
-            } catch (error) {
-                console.error('❌ TTS error:', error);
+            } catch (err) {
+                console.error('TTS error:', err);
             }
         }
 
-        function endCall() {
-            isActive = false;
-            isRecording = false;
-            isRecognitionRunning = false;
-            isProcessing = false;
-            
-            if (recognition) {
-                recognition.stop();
-            }
-            if (currentAudio) {
-                currentAudio.pause();
-                currentAudio = null;
-            }
-            
-            updateStatus('Call ended', 'idle');
-            document.getElementById('startBtn').style.display = 'block';
-            document.getElementById('callControls').style.display = 'none';
+        // Animate waveform
+        function animateWaveform(active) {
+            const bars = waveformBars.querySelectorAll('.bar');
+            bars.forEach(bar => {
+                if (active) bar.classList.add('active');
+                else bar.classList.remove('active');
+            });
+            waveformText.textContent = active ? 'Playing' : 'Tap to play';
         }
+
+        // Play response
+        playBtn.addEventListener('click', async () => {
+            if (!currentResponse) return;
+            if (isSpeaking) return;
+
+            isSpeaking = true;
+            animateWaveform(true);
+            await playTTS(currentResponse);
+            setTimeout(() => {
+                isSpeaking = false;
+                animateWaveform(false);
+            }, 1000);
+        });
+
+        // Mic button
+        micBtn.addEventListener('click', () => {
+            if (!isActive) {
+                startRecognition();
+            }
+        });
+
+        // Auto-start on load
+        window.addEventListener('load', () => {
+            console.log('Ready! Tap mic to start');
+        });
     </script>
 </body>
 </html>
