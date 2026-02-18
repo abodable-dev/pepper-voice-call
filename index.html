@@ -343,7 +343,7 @@
             }
         }
 
-        async function playTTS(text, retryCount = 0) {
+        async function playTTS(text) {
             try {
                 // Stop any currently playing audio
                 if (currentAudio) {
@@ -351,38 +351,31 @@
                     currentAudio = null;
                 }
 
-                // Get TTS audio from backend
+                console.log('🗣️ Fetching TTS for:', text.substring(0, 50));
+
+                // Get TTS audio from backend (same as test page)
                 const response = await fetch(TTS_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text }),
-                    mode: 'cors'
+                    body: JSON.stringify({ text })
                 });
 
                 if (!response.ok) {
-                    throw new Error(`TTS failed: ${response.status}`);
+                    throw new Error(`TTS HTTP ${response.status}`);
                 }
 
-                // Check if we got HTML (ngrok warning page) instead of audio
-                const contentType = response.headers.get('content-type');
-                if (contentType && contentType.includes('text/html')) {
-                    throw new Error('Got HTML instead of audio (ngrok warning?)');
-                }
-
-                // Convert response to blob and create audio URL
                 const audioBlob = await response.blob();
-                
-                // Verify we got audio
-                if (audioBlob.size < 1000) {
-                    throw new Error('Audio blob too small');
-                }
+                console.log('✅ Got audio blob:', audioBlob.size, 'bytes, type:', audioBlob.type);
                 
                 const audioUrl = URL.createObjectURL(audioBlob);
-                
                 currentAudio = new Audio(audioUrl);
-                currentAudio.preload = 'auto';
+                
+                currentAudio.onplay = () => {
+                    console.log('▶️ Playing audio');
+                };
                 
                 currentAudio.onended = () => {
+                    console.log('✅ Audio finished');
                     URL.revokeObjectURL(audioUrl);
                     currentAudio = null;
                     if (isActive) {
@@ -391,52 +384,22 @@
                 };
                 
                 currentAudio.onerror = (e) => {
-                    console.error('Audio playback error:', e);
+                    console.error('❌ Audio error:', currentAudio.error);
                     URL.revokeObjectURL(audioUrl);
-                    if (retryCount < 2) {
-                        console.log('Retrying TTS...');
-                        setTimeout(() => playTTS(text, retryCount + 1), 1000);
-                    } else {
-                        if (isActive) {
-                            updateStatus('🎙️ Listening... (audio failed)', 'connected');
-                        }
+                    addMessage('assistant', `⚠️ Audio error: ${currentAudio.error?.message || 'Unknown'}`);
+                    if (isActive) {
+                        updateStatus('🎙️ Listening...', 'connected');
                     }
                 };
                 
-                // Play with better error handling
-                const playPromise = currentAudio.play();
-                
-                if (playPromise !== undefined) {
-                    playPromise.catch(error => {
-                        console.error('❌ Audio play error:', error.name, error.message);
-                        
-                        // Log to user
-                        if (error.name === 'NotAllowedError') {
-                            addMessage('assistant', '⚠️ Audio blocked - tap screen to enable');
-                        } else if (error.name === 'NotSupportedError') {
-                            addMessage('assistant', '⚠️ Audio format not supported');
-                        } else {
-                            addMessage('assistant', `⚠️ Audio error: ${error.name}`);
-                        }
-                        
-                        if (isActive) {
-                            updateStatus('🎙️ Listening... (audio failed)', 'connected');
-                        }
-                    });
-                }
+                // Play (same as test page)
+                await currentAudio.play();
                 
             } catch (error) {
-                console.error('TTS error:', error);
-                
-                // Retry once if first attempt fails
-                if (retryCount < 2) {
-                    console.log('Retrying TTS after error...');
-                    setTimeout(() => playTTS(text, retryCount + 1), 1000);
-                } else {
-                    addMessage('assistant', '(Audio failed - check console)');
-                    if (isActive) {
-                        updateStatus('🎙️ Listening... (audio error)', 'connected');
-                    }
+                console.error('❌ TTS error:', error);
+                addMessage('assistant', `⚠️ ${error.message}`);
+                if (isActive) {
+                    updateStatus('🎙️ Listening...', 'connected');
                 }
             }
         }
