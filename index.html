@@ -178,6 +178,10 @@
         function addMessage(role, content) {
             const messagesDiv = document.getElementById('messages');
             const transcriptDiv = document.getElementById('transcript');
+            
+            console.log('📝 Adding message:', role, content.substring(0, 50));
+            console.log('📝 Messages div children count before:', messagesDiv.children.length);
+            
             transcriptDiv.style.display = 'block';
             
             const msgDiv = document.createElement('div');
@@ -185,6 +189,14 @@
             msgDiv.innerHTML = `<strong>${role === 'user' ? 'You' : 'Pepper'}</strong>${content}`;
             messagesDiv.appendChild(msgDiv);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            
+            console.log('📝 Messages div children count after:', messagesDiv.children.length);
+            
+            // Force transcript to stay visible
+            setTimeout(() => {
+                transcriptDiv.style.display = 'block';
+                console.log('🔒 Transcript visibility enforced');
+            }, 100);
         }
 
         async function initCall() {
@@ -217,11 +229,13 @@
                 updateStatus('🎙️ Listening... just start talking!', 'connected');
                 document.getElementById('startBtn').style.display = 'none';
                 document.getElementById('callControls').style.display = 'block';
+                document.getElementById('transcript').style.display = 'block'; // Show transcript from the start
                 isActive = true;
                 
                 // Initialize conversation
                 conversationHistory = [];
                 document.getElementById('messages').innerHTML = '';
+                console.log('🎬 Call started - transcript area visible');
                 
                 // Setup speech recognition
                 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -296,7 +310,16 @@
                 // Debug health check - log state every 5 seconds
                 setInterval(() => {
                     if (isActive) {
+                        const messagesDiv = document.getElementById('messages');
+                        const transcriptDiv = document.getElementById('transcript');
                         console.log('📊 Health check - isActive:', isActive, 'isProcessing:', isProcessing, 'isRecognitionRunning:', isRecognitionRunning);
+                        console.log('📊 Messages count:', messagesDiv.children.length, 'Transcript visible:', transcriptDiv.style.display);
+                        
+                        // Force transcript to stay visible if we have messages
+                        if (messagesDiv.children.length > 0 && transcriptDiv.style.display !== 'block') {
+                            console.log('⚠️ Transcript was hidden! Forcing it back visible');
+                            transcriptDiv.style.display = 'block';
+                        }
                     }
                 }, 5000);
                 
