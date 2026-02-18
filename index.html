@@ -161,6 +161,7 @@
         const API_TOKEN = '0606e7e42d266711af55d7f720655c5ce242086b8f0ca51a';
         
         let currentAudio = null; // Track playing audio
+        let audioContext = null; // iOS audio unlock
 
         function updateStatus(message, type = 'idle') {
             const statusEl = document.getElementById('status');
@@ -183,6 +184,17 @@
         async function startCall() {
             try {
                 updateStatus('Requesting microphone access...', 'connecting');
+                
+                // iOS audio unlock - play silent audio from user gesture
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const buffer = audioContext.createBuffer(1, 1, 22050);
+                    const source = audioContext.createBufferSource();
+                    source.buffer = buffer;
+                    source.connect(audioContext.destination);
+                    source.start(0);
+                    console.log('iOS audio unlocked');
+                }
                 
                 // Check for speech recognition support
                 if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
