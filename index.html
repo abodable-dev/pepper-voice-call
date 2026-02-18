@@ -379,16 +379,6 @@
         async function playTTS(text) {
             try {
                 console.log('🗣️ Fetching TTS for:', text.substring(0, 50));
-                
-                // Pause speech recognition while playing audio
-                if (recognition && isActive) {
-                    try {
-                        recognition.stop();
-                        console.log('⏸️ Paused listening for audio');
-                    } catch (e) {
-                        console.log('Could not stop recognition:', e);
-                    }
-                }
 
                 // Get TTS audio from backend
                 const response = await fetch(TTS_URL, {
@@ -422,15 +412,8 @@
                     console.log('✅ Audio finished');
                     URL.revokeObjectURL(audioUrl);
                     
-                    // Resume speech recognition after audio finishes
-                    if (isActive && recognition) {
-                        try {
-                            recognition.start();
-                            console.log('▶️ Resumed listening');
-                            updateStatus('🎙️ Listening...', 'connected');
-                        } catch (e) {
-                            console.log('Could not restart recognition:', e);
-                        }
+                    if (isActive) {
+                        updateStatus('Ready! Tap to talk', 'connected');
                     }
                 };
                 
@@ -438,14 +421,8 @@
                     console.error('❌ Audio error:', currentAudio.error);
                     URL.revokeObjectURL(audioUrl);
                     
-                    // Resume listening even on error
-                    if (isActive && recognition) {
-                        try {
-                            recognition.start();
-                            updateStatus('🎙️ Listening...', 'connected');
-                        } catch (e) {
-                            console.log('Could not restart recognition:', e);
-                        }
+                    if (isActive) {
+                        updateStatus('Ready! Tap to talk', 'connected');
                     }
                 };
                 
@@ -456,14 +433,8 @@
             } catch (error) {
                 console.error('❌ TTS error:', error);
                 
-                // Resume listening on error
-                if (isActive && recognition) {
-                    try {
-                        recognition.start();
-                        updateStatus('🎙️ Listening...', 'connected');
-                    } catch (e) {
-                        console.log('Could not restart recognition:', e);
-                    }
+                if (isActive) {
+                    updateStatus('Ready! Tap to talk', 'connected');
                 }
             }
         }
