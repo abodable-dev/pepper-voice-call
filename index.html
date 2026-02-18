@@ -66,6 +66,33 @@
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(40,167,69,0.3);
         }
+        button.talk {
+            background: #007bff;
+            color: white;
+            font-size: 20px;
+            padding: 30px;
+            border-radius: 50%;
+            width: 120px;
+            height: 120px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 20px auto;
+            transition: all 0.2s;
+        }
+        button.talk:active, button.talk.recording {
+            background: #0056b3;
+            transform: scale(0.95);
+        }
+        button.talk #talkIcon {
+            font-size: 40px;
+            line-height: 1;
+        }
+        button.talk #talkText {
+            font-size: 12px;
+            margin-top: 5px;
+        }
         button.end {
             background: #dc3545;
             color: white;
@@ -133,13 +160,19 @@
             Ready to start voice call
         </div>
         
-        <button id="startBtn" class="start" onclick="startCall()">
+        <button id="startBtn" class="start" onclick="initCall()">
             🎤 Start Voice Call
         </button>
         
-        <button id="endBtn" class="end" onclick="endCall()" style="display:none;">
-            ❌ End Call
-        </button>
+        <div id="callControls" style="display:none;">
+            <button id="talkBtn" class="talk">
+                <span id="talkIcon">🎤</span>
+                <span id="talkText">Tap to Talk</span>
+            </button>
+            <button id="endBtn" class="end" onclick="endCall()">
+                ❌ End Call
+            </button>
+        </div>
         
         <div id="transcript" class="transcript" style="display:none;">
             <div id="messages"></div>
@@ -162,6 +195,8 @@
         
         let currentAudio = null; // Persistent audio element
         let isAudioReady = false;
+        let isRecording = false;
+        let recordingChunks = [];
 
         function updateStatus(message, type = 'idle') {
             const statusEl = document.getElementById('status');
@@ -181,7 +216,7 @@
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
 
-        async function startCall() {
+        async function initCall() {
             try {
                 updateStatus('Requesting microphone access...', 'connecting');
                 
@@ -435,6 +470,7 @@
 
         function endCall() {
             isActive = false;
+            isRecording = false;
             
             if (recognition) {
                 recognition.stop();
@@ -446,7 +482,7 @@
             
             updateStatus('Call ended', 'idle');
             document.getElementById('startBtn').style.display = 'block';
-            document.getElementById('endBtn').style.display = 'none';
+            document.getElementById('callControls').style.display = 'none';
         }
     </script>
 </body>
