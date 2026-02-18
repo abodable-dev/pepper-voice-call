@@ -170,6 +170,7 @@
         let isAudioReady = false;
         let isRecording = false;
         let recordingChunks = [];
+        let pendingAudioChunks = 0; // Track audio chunks being played
 
         function updateStatus(message, type = 'idle') {
             const statusEl = document.getElementById('status');
@@ -371,6 +372,8 @@
 
         async function sendMessage(userMessage) {
             try {
+                pendingAudioChunks = 0; // Reset audio counter for new response
+                
                 // Add user message to history
                 conversationHistory.push({
                     role: 'user',
@@ -456,11 +459,20 @@
                 // Display full message
                 addMessage('assistant', fullText);
                 
-                // Done processing - ready for next input
-                console.log('🔓 Setting isProcessing = false');
-                isProcessing = false;
-                updateStatus('🎙️ Listening... (ready for input)', 'connected');
-                console.log('✅ Ready for next input. isProcessing:', isProcessing);
+                // Wait for audio to finish before accepting new input
+                console.log('⏳ Response complete, waiting for audio to finish... Pending chunks:', pendingAudioChunks);
+                const checkAudioDone = () => {
+                    if (pendingAudioChunks === 0) {
+                        console.log('🔓 All audio finished, setting isProcessing = false');
+                        isProcessing = false;
+                        updateStatus('🎙️ Ready! Speak now', 'connected');
+                        console.log('✅ Ready for next input. isProcessing:', isProcessing);
+                    } else {
+                        console.log('⏳ Still playing audio, checking again... Pending:', pendingAudioChunks);
+                        setTimeout(checkAudioDone, 500);
+                    }
+                };
+                setTimeout(checkAudioDone, 500); // Start checking after brief delay
                 
             } catch (err) {
                 console.error('Failed to send message:', err);
@@ -510,10 +522,13 @@
                 currentAudio.onended = () => {
                     console.log('✅ Audio chunk finished. isProcessing:', isProcessing);
                     URL.revokeObjectURL(audioUrl);
+                    pendingAudioChunks--;
+                    console.log('📊 Pending audio chunks:', pendingAudioChunks);
                     
-                    // Show we're still alive while playing chunks
-                    if (isProcessing) {
-                        updateStatus('🗣️ Speaking...', 'connected');
+                    // If no more audio and processing is done, enable mic
+                    if (pendingAudioChunks === 0 && !isProcessing) {
+                        updateStatus('🎙️ Ready! Speak now', 'connected');
+                        console.log('✅ All audio done, mic ready');
                     }
                 };
                 
@@ -523,8 +538,9 @@
                 };
                 
                 // Play on the same Audio element
+                pendingAudioChunks++;
+                console.log('▶️ Playing chunk. Pending:', pendingAudioChunks);
                 await currentAudio.play();
-                console.log('▶️ Playing');
                 
             } catch (error) {
                 console.error('❌ TTS error:', error);
