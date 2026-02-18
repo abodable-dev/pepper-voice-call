@@ -232,12 +232,19 @@
                 
                 recognition.onresult = async (event) => {
                     const transcript = event.results[event.results.length - 1][0].transcript.trim();
-                    if (!transcript || isProcessing) {
-                        console.log('Ignoring transcript (empty or processing):', transcript);
+                    console.log('🎤 Recognition fired. Transcript:', transcript, 'isProcessing:', isProcessing);
+                    
+                    if (!transcript) {
+                        console.log('⚠️ Empty transcript, ignoring');
                         return;
                     }
                     
-                    console.log('Heard:', transcript);
+                    if (isProcessing) {
+                        console.log('⚠️ Already processing, ignoring:', transcript);
+                        return;
+                    }
+                    
+                    console.log('✅ Heard:', transcript);
                     isProcessing = true;
                     addMessage('user', transcript);
                     updateStatus('🤔 Pepper is thinking...', 'connecting');
@@ -285,6 +292,13 @@
                 };
                 
                 recognition.start();
+                
+                // Debug health check - log state every 5 seconds
+                setInterval(() => {
+                    if (isActive) {
+                        console.log('📊 Health check - isActive:', isActive, 'isProcessing:', isProcessing, 'isRecognitionRunning:', isRecognitionRunning);
+                    }
+                }, 5000);
                 
             } catch (err) {
                 updateStatus(`Error: ${err.message}`, 'error');
@@ -382,9 +396,10 @@
                 addMessage('assistant', fullText);
                 
                 // Done processing - ready for next input
+                console.log('🔓 Setting isProcessing = false');
                 isProcessing = false;
-                updateStatus('🎙️ Listening...', 'connected');
-                console.log('✅ Ready for next input');
+                updateStatus('🎙️ Listening... (ready for input)', 'connected');
+                console.log('✅ Ready for next input. isProcessing:', isProcessing);
                 
             } catch (err) {
                 console.error('Failed to send message:', err);
@@ -432,8 +447,13 @@
                 currentAudio.src = audioUrl;
                 
                 currentAudio.onended = () => {
-                    console.log('✅ Audio chunk finished');
+                    console.log('✅ Audio chunk finished. isProcessing:', isProcessing);
                     URL.revokeObjectURL(audioUrl);
+                    
+                    // Show we're still alive while playing chunks
+                    if (isProcessing) {
+                        updateStatus('🗣️ Speaking...', 'connected');
+                    }
                 };
                 
                 currentAudio.onerror = (e) => {
