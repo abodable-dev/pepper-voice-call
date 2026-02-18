@@ -331,12 +331,14 @@
                 const transcript = result[0].transcript.trim();
                 
                 if (transcript) {
+                    lastTranscriptTime = Date.now(); // Reset watchdog
                     partialTranscript = transcript;
                     setTranscript(transcript);
                     
                     clearTimeout(silenceTimer);
                     
                     if (result.isFinal && !isProcessing) {
+                        console.log('Final transcript:', transcript);
                         silenceTimer = setTimeout(() => {
                             if (partialTranscript && !isProcessing) {
                                 sendTranscript(partialTranscript);
@@ -348,15 +350,48 @@
 
             recognition.onerror = (e) => {
                 console.error('Recognition error:', e.error);
+                
+                // Handle specific errors
+                if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+                    setStatus('Mic access denied');
+                    isActive = false;
+                    micBtn.classList.remove('listening', 'speaking', 'thinking');
+                    return;
+                }
+                
+                if (e.error === 'network') {
+                    setStatus('Network error - retrying...');
+                    // Will auto-restart via onend
+                    return;
+                }
+                
+                if (e.error === 'audio-capture') {
+                    console.log('Audio capture error - will restart');
+                    // iOS Safari issue - will restart via onend
+                    return;
+                }
+                
+                // For other errors, show but keep trying
+                if (e.error !== 'no-speech' && e.error !== 'aborted') {
+                    console.warn('Unhandled error:', e.error);
+                }
             };
 
             recognition.onend = () => {
+                console.log('Recognition ended. isActive:', isActive, 'isProcessing:', isProcessing);
+                
                 if (isActive && !isProcessing) {
                     setTimeout(() => {
                         if (isActive) {
                             try {
                                 recognition.start();
-                            } catch (e) {}
+                                console.log('Recognition restarted successfully');
+                            } catch (e) {
+                                console.error('Failed to restart recognition:', e.message);
+                                // Show error to user
+                                setStatus('Mic error - tap to retry');
+                                micBtn.classList.remove('listening');
+                            }
                         }
                     }, 100);
                 }
@@ -376,6 +411,33 @@
             }
         }
 
+        // Watchdog to detect stuck recognition
+        let lastTranscriptTime = Date.now();
+        let watchdogTimer = null;
+        
+        function startWatchdog() {
+            if (watchdogTimer) clearInterval(watchdogTimer);
+            
+            watchdogTimer = setInterval(() => {
+                if (!isActive || isProcessing) return;
+                
+                // If no activity for 30 seconds and we should be listening, restart
+                const timeSinceTranscript = Date.now() - lastTranscriptTime;
+                if (timeSinceTranscript > 30000) {
+                    console.warn('Watchdog: Recognition may be stuck, restarting...');
+                    try {
+                        recognition.stop();
+                        setTimeout(() => {
+                            if (isActive) recognition.start();
+                        }, 200);
+                        lastTranscriptTime = Date.now();
+                    } catch (e) {
+                        console.error('Watchdog restart failed:', e);
+                    }
+                }
+            }, 10000); // Check every 10 seconds
+        }
+        
         // Start listening
         async function startListening() {
             if (!recognition) {
@@ -385,6 +447,7 @@
             
             isActive = true;
             partialTranscript = '';
+            lastTranscriptTime = Date.now();
             micBtn.classList.add('listening');
             micLabel.textContent = 'Listening';
             setStatus('Listening...');
@@ -392,7 +455,12 @@
             
             try {
                 recognition.start();
-            } catch (e) {}
+                startWatchdog();
+                console.log('Listening started with watchdog');
+            } catch (e) {
+                console.error('Failed to start listening:', e);
+                setStatus('Failed to start - tap to retry');
+            }
         }
 
         // Send transcript
@@ -551,6 +619,8 @@
 
         // Interrupt
         function interrupt() {
+            console.log('Interrupted');
+            
             if (currentAudio) {
                 currentAudio.pause();
                 currentAudio.currentTime = 0;
@@ -561,6 +631,7 @@
             isProcessing = false;
             partialTranscript = '';
             clearTimeout(silenceTimer);
+            lastTranscriptTime = Date.now();
             
             micBtn.classList.remove('speaking', 'thinking');
             micBtn.classList.add('listening');
@@ -568,16 +639,48 @@
             setTranscript('Listening...');
             
             if (recognition && isActive) {
-                try { recognition.start(); } catch (e) {}
+                try { 
+                    recognition.start(); 
+                    console.log('Recognition restarted after interrupt');
+                } catch (e) {
+                    console.error('Failed to restart after interrupt:', e);
+                }
             }
+        }
+        
+        // Stop everything (cleanup)
+        function stopEverything() {
+            isActive = false;
+            if (watchdogTimer) clearInterval(watchdogTimer);
+            if (recognition) recognition.stop();
+            if (currentAudio) currentAudio.pause();
+            audioQueue = [];
+            console.log('Stopped everything');
         }
 
         // Mic button click
         micBtn.addEventListener('click', () => {
             if (!isActive) {
+                // Start fresh
                 startListening();
             } else if (isSpeaking || isProcessing) {
+                // Interrupt if speaking
                 interrupt();
+            } else {
+                // If listening but user taps - maybe recognition is stuck, restart it
+                console.log('Manual restart requested');
+                try {
+                    recognition.stop();
+                    setTimeout(() => {
+                        if (isActive) {
+                            recognition.start();
+                            lastTranscriptTime = Date.now();
+                            setStatus('Listening...');
+                        }
+                    }, 200);
+                } catch (e) {
+                    console.error('Manual restart failed:', e);
+                }
             }
         });
 
