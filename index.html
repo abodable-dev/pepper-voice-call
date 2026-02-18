@@ -185,47 +185,55 @@
             animation: pulse 0.6s ease-in-out infinite;
         }
         
-        /* Bottom Input */
+        /* Bottom Input - Big Center Button */
         .input-container {
             position: fixed;
             bottom: 0;
             left: 0;
             right: 0;
-            padding: 24px;
-            background: linear-gradient(to top, #F8F9FA, #F8F9FA, transparent);
-            padding-top: 48px;
-        }
-        .input-pill {
-            background: white;
-            border-radius: 32px;
-            padding: 8px;
+            padding: 48px 24px 24px;
+            background: linear-gradient(to top, #F8F9FA, #F8F9FA 70%, transparent);
             display: flex;
+            flex-direction: column;
             align-items: center;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.06);
-            border: 1px solid rgba(0,0,0,0.04);
-            max-width: 768px;
-            margin: 0 auto;
+            justify-content: center;
         }
         .mic-btn {
-            padding: 12px;
-            background: transparent;
+            width: 160px;
+            height: 160px;
+            background: #3b82f6;
             border: none;
-            cursor: pointer;
             border-radius: 50%;
+            cursor: pointer;
             transition: all 0.2s;
-            color: #3b82f6;
+            color: white;
+            box-shadow: 0 20px 60px rgba(59,130,246,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
-        .mic-btn:active {
-            transform: scale(0.9);
+        .mic-btn svg {
+            width: 64px;
+            height: 64px;
         }
-        .mic-btn.listening {
-            color: #ef4444;
-            background: rgba(239,68,68,0.1);
-            animation: pulse 1s ease-in-out infinite;
+        .mic-btn:active,
+        .mic-btn.recording {
+            transform: scale(0.95);
+            background: #ef4444;
+            box-shadow: 0 20px 60px rgba(239,68,68,0.4);
         }
-        .mic-btn.off {
-            color: rgba(0,0,0,0.3);
-            background: rgba(0,0,0,0.05);
+        .mic-btn.recording {
+            animation: pulse 0.8s ease-in-out infinite;
+        }
+        .mic-instruction {
+            font-size: 14px;
+            font-weight: 600;
+            color: rgba(0,0,0,0.5);
+            text-align: center;
         }
         .footer-info {
             display: flex;
@@ -315,23 +323,15 @@
 
     <!-- Bottom Input -->
     <div class="input-container">
-        <div class="input-pill">
-            <button class="mic-btn off" id="micBtn">
-                <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
-                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-                    <line x1="12" y1="19" x2="12" y2="23"></line>
-                    <line x1="8" y1="23" x2="16" y2="23"></line>
-                </svg>
-            </button>
-        </div>
-        <div class="footer-info">
-            <p>Powered by Claude Haiku 3.5</p>
-            <div class="footer-status">
-                <div class="dot"></div>
-                <span>Encrypted</span>
-            </div>
-        </div>
+        <button class="mic-btn" id="micBtn">
+            <svg fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="8" y1="23" x2="16" y2="23"></line>
+            </svg>
+        </button>
+        <div class="mic-instruction" id="micInstruction">Hold to talk</div>
     </div>
 
     <script>
@@ -354,6 +354,7 @@
 
         // DOM
         const micBtn = document.getElementById('micBtn');
+        const micInstruction = document.getElementById('micInstruction');
         const statusDot = document.getElementById('statusDot');
         const statusText = document.getElementById('statusText');
         const queryText = document.getElementById('queryText');
@@ -362,6 +363,9 @@
         const playBtn = document.getElementById('playBtn');
         const waveformBars = document.getElementById('waveformBars');
         const waveformText = document.getElementById('waveformText');
+        
+        let isHolding = false;
+        let capturedTranscript = '';
 
         // Generate waveform bars
         const barHeights = [2, 4, 7, 3, 5, 8, 6, 4, 2, 4, 7, 3, 5, 2, 4, 7, 3, 5, 8, 6, 4, 2];
@@ -378,75 +382,106 @@
             statusText.textContent = text;
         }
 
-        // Start recognition
-        async function startRecognition() {
-            if (!recognition) {
-                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-                if (!SpeechRecognition) {
-                    alert('Speech recognition not supported in this browser');
-                    return;
-                }
-
-                recognition = new SpeechRecognition();
-                recognition.continuous = true;
-                recognition.interimResults = false;
-                recognition.lang = 'en-AU';
-
-                recognition.onresult = async (event) => {
-                    const transcript = event.results[event.results.length - 1][0].transcript.trim();
-                    if (!transcript || isProcessing) return;
-
-                    console.log('Heard:', transcript);
-                    isProcessing = true;
-                    queryText.textContent = transcript;
-                    queryText.classList.remove('placeholder');
-                    setStatus('thinking', 'Thinking...');
-
-                    await sendMessage(transcript);
-                };
-
-                recognition.onerror = (e) => {
-                    console.error('Recognition error:', e.error);
-                    if (e.error !== 'no-speech' && e.error !== 'aborted') {
-                        setStatus('', 'Error: ' + e.error);
-                    }
-                };
-
-                recognition.onend = () => {
-                    console.log('Recognition ended. isActive:', isActive);
-                    // Only auto-restart if we're still active (not manually stopped)
-                    if (isActive) {
-                        setTimeout(() => { 
-                            if (isActive) {
-                                try {
-                                    recognition.start(); 
-                                    console.log('Recognition auto-restarted');
-                                } catch (e) {
-                                    console.log('Auto-restart skipped:', e.message);
-                                }
-                            }
-                        }, 100);
-                    }
-                };
+        // Initialize recognition once
+        async function initRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                alert('Speech recognition not supported in this browser');
+                return false;
             }
 
+            recognition = new SpeechRecognition();
+            recognition.continuous = false; // Single utterance mode
+            recognition.interimResults = false;
+            recognition.lang = 'en-AU';
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[event.results.length - 1][0].transcript.trim();
+                if (transcript) {
+                    capturedTranscript = transcript;
+                    console.log('Captured:', transcript);
+                }
+            };
+
+            recognition.onerror = (e) => {
+                console.error('Recognition error:', e.error);
+                if (e.error !== 'no-speech' && e.error !== 'aborted') {
+                    setStatus('', 'Error: ' + e.error);
+                }
+            };
+
+            recognition.onend = () => {
+                console.log('Recognition ended');
+                if (isHolding) {
+                    // Still holding - restart
+                    try {
+                        recognition.start();
+                    } catch (e) {
+                        console.log('Restart skipped:', e.message);
+                    }
+                }
+            };
+
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                await navigator.mediaDevices.getUserMedia({ audio: true });
                 if (!currentAudio) {
                     currentAudio = new Audio();
                     currentAudio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
                     try { await currentAudio.play(); } catch (e) {}
                 }
-                
-                isActive = true;
-                recognition.start();
-                setStatus('listening', 'Listening...');
-                micBtn.classList.add('listening');
-                isListening = true;
+                return true;
             } catch (err) {
                 console.error('Mic error:', err);
                 alert('Microphone access denied');
+                return false;
             }
+        }
+
+        // Start listening (hold down)
+        async function startListening() {
+            if (!recognition) {
+                const ready = await initRecognition();
+                if (!ready) return;
+            }
+            
+            isHolding = true;
+            capturedTranscript = '';
+            micBtn.classList.add('recording');
+            micInstruction.textContent = 'Listening...';
+            setStatus('listening', 'Listening...');
+            
+            try {
+                recognition.start();
+                console.log('Started listening');
+            } catch (e) {
+                console.log('Already running');
+            }
+        }
+
+        // Stop listening and send (release)
+        async function stopListening() {
+            if (!isHolding) return;
+            
+            isHolding = false;
+            micBtn.classList.remove('recording');
+            micInstruction.textContent = 'Hold to talk';
+            
+            if (recognition) recognition.stop();
+            
+            // Wait a moment for final transcript
+            setTimeout(async () => {
+                if (capturedTranscript && !isProcessing) {
+                    console.log('Sending:', capturedTranscript);
+                    isProcessing = true;
+                    queryText.textContent = capturedTranscript;
+                    queryText.classList.remove('placeholder');
+                    setStatus('thinking', 'Thinking...');
+                    await sendMessage(capturedTranscript);
+                } else {
+                    setStatus('', 'Ready');
+                    console.log('No transcript captured');
+                }
+            }, 300);
         }
 
         // Send message
@@ -601,21 +636,35 @@
             }, 1000);
         });
 
-        // Mic button - toggle on/off
-        micBtn.addEventListener('click', () => {
-            if (!isActive) {
-                micBtn.classList.remove('off');
-                startRecognition();
-            } else {
-                // Stop listening
-                isActive = false;
-                isListening = false;
-                if (recognition) recognition.stop();
-                micBtn.classList.remove('listening');
-                micBtn.classList.add('off');
-                setStatus('', 'Tap mic to talk');
-                console.log('Mic turned off');
-            }
+        // Hold to talk - touch events
+        micBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (!isProcessing) startListening();
+        });
+        
+        micBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            stopListening();
+        });
+        
+        micBtn.addEventListener('touchcancel', (e) => {
+            e.preventDefault();
+            stopListening();
+        });
+
+        // Hold to talk - mouse events (for desktop)
+        micBtn.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            if (!isProcessing) startListening();
+        });
+        
+        micBtn.addEventListener('mouseup', (e) => {
+            e.preventDefault();
+            stopListening();
+        });
+        
+        micBtn.addEventListener('mouseleave', () => {
+            if (isHolding) stopListening();
         });
 
         // Auto-start on load
