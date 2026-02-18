@@ -247,16 +247,29 @@
                     if (event.error === 'aborted') {
                         return; // Expected when we pause for audio playback
                     }
+                    if (event.error === 'audio-capture') {
+                        console.log('Audio capture error - will retry');
+                        return; // Safari issue, will restart in onend
+                    }
                     updateStatus(`Speech error: ${event.error}`, 'error');
                 };
                 
                 recognition.onend = () => {
+                    console.log('Recognition ended, isActive:', isActive);
                     if (isActive) {
-                        try {
-                            recognition.start();
-                        } catch (e) {
-                            console.log('Recognition restart prevented:', e);
-                        }
+                        // Safari needs a small delay before restarting
+                        setTimeout(() => {
+                            if (isActive) {
+                                try {
+                                    recognition.start();
+                                    console.log('Recognition restarted');
+                                    updateStatus('🎙️ Listening...', 'connected');
+                                } catch (e) {
+                                    console.error('Recognition restart failed:', e);
+                                    updateStatus(`Error: ${e.message}`, 'error');
+                                }
+                            }
+                        }, 100);
                     }
                 };
                 
@@ -364,6 +377,12 @@
                 setTimeout(() => {
                     if (isActive) {
                         updateStatus('🎙️ Listening...', 'connected');
+                        // Ensure recognition is running
+                        try {
+                            if (recognition) recognition.start();
+                        } catch (e) {
+                            console.log('Recognition already running or will restart');
+                        }
                     }
                 }, 2000);
             }
@@ -407,6 +426,12 @@
                     
                     if (isActive) {
                         updateStatus('🎙️ Listening...', 'connected');
+                        // Ensure recognition is running after audio playback
+                        try {
+                            if (recognition) recognition.start();
+                        } catch (e) {
+                            console.log('Recognition already running or will restart');
+                        }
                     }
                 };
                 
@@ -416,6 +441,12 @@
                     
                     if (isActive) {
                         updateStatus('🎙️ Listening...', 'connected');
+                        // Ensure recognition is running after error
+                        try {
+                            if (recognition) recognition.start();
+                        } catch (e) {
+                            console.log('Recognition already running or will restart');
+                        }
                     }
                 };
                 
@@ -427,7 +458,13 @@
                 console.error('❌ TTS error:', error);
                 
                 if (isActive) {
-                    updateStatus('Ready! Tap to talk', 'connected');
+                    updateStatus('🎙️ Listening...', 'connected');
+                    // Ensure recognition is running after TTS error
+                    try {
+                        if (recognition) recognition.start();
+                    } catch (e) {
+                        console.log('Recognition already running or will restart');
+                    }
                 }
             }
         }
