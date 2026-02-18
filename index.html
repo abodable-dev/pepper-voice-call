@@ -285,6 +285,12 @@
 
         async function sendMessage(userMessage) {
             try {
+                // Stop recognition while we get response and play audio
+                if (recognition) {
+                    console.log('Stopping recognition during API call');
+                    recognition.stop();
+                }
+                
                 // Add user message to history
                 conversationHistory.push({
                     role: 'user',
@@ -370,18 +376,30 @@
                 // Display full message
                 addMessage('assistant', fullText);
                 
+                // Wait a moment for any audio to finish, then restart recognition
+                setTimeout(() => {
+                    if (isActive && recognition) {
+                        try {
+                            console.log('🎤 Restarting recognition after response complete');
+                            recognition.start();
+                            updateStatus('🎙️ Listening...', 'connected');
+                        } catch (e) {
+                            console.log('Recognition restart attempt:', e.message);
+                        }
+                    }
+                }, 500);
+                
             } catch (err) {
                 console.error('Failed to send message:', err);
                 updateStatus(`Error: ${err.message}`, 'error');
                 
                 setTimeout(() => {
-                    if (isActive) {
-                        updateStatus('🎙️ Listening...', 'connected');
-                        // Ensure recognition is running
+                    if (isActive && recognition) {
                         try {
-                            if (recognition) recognition.start();
+                            recognition.start();
+                            updateStatus('🎙️ Listening...', 'connected');
                         } catch (e) {
-                            console.log('Recognition already running or will restart');
+                            console.log('Recognition restart after error:', e.message);
                         }
                     }
                 }, 2000);
@@ -421,33 +439,13 @@
                 currentAudio.src = audioUrl;
                 
                 currentAudio.onended = () => {
-                    console.log('✅ Audio finished');
+                    console.log('✅ Audio chunk finished');
                     URL.revokeObjectURL(audioUrl);
-                    
-                    if (isActive) {
-                        updateStatus('🎙️ Listening...', 'connected');
-                        // Ensure recognition is running after audio playback
-                        try {
-                            if (recognition) recognition.start();
-                        } catch (e) {
-                            console.log('Recognition already running or will restart');
-                        }
-                    }
                 };
                 
                 currentAudio.onerror = (e) => {
                     console.error('❌ Audio error:', currentAudio.error);
                     URL.revokeObjectURL(audioUrl);
-                    
-                    if (isActive) {
-                        updateStatus('🎙️ Listening...', 'connected');
-                        // Ensure recognition is running after error
-                        try {
-                            if (recognition) recognition.start();
-                        } catch (e) {
-                            console.log('Recognition already running or will restart');
-                        }
-                    }
                 };
                 
                 // Play on the same Audio element
@@ -456,16 +454,6 @@
                 
             } catch (error) {
                 console.error('❌ TTS error:', error);
-                
-                if (isActive) {
-                    updateStatus('🎙️ Listening...', 'connected');
-                    // Ensure recognition is running after TTS error
-                    try {
-                        if (recognition) recognition.start();
-                    } catch (e) {
-                        console.log('Recognition already running or will restart');
-                    }
-                }
             }
         }
 
