@@ -162,6 +162,22 @@
         
         let currentAudio = null; // Track playing audio
         let audioContext = null; // iOS audio unlock
+        let audioQueue = []; // Queue for iOS
+        let isAudioUnlocked = false;
+
+        // Unlock audio on first user interaction
+        function unlockAudio() {
+            if (isAudioUnlocked) return;
+            
+            const audio = new Audio();
+            audio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+            audio.play().then(() => {
+                console.log('✅ Audio unlocked for iOS');
+                isAudioUnlocked = true;
+            }).catch(e => {
+                console.log('⚠️ Audio unlock failed:', e);
+            });
+        }
 
         function updateStatus(message, type = 'idle') {
             const statusEl = document.getElementById('status');
@@ -183,18 +199,10 @@
 
         async function startCall() {
             try {
-                updateStatus('Requesting microphone access...', 'connecting');
+                // Unlock audio first
+                unlockAudio();
                 
-                // iOS audio unlock - play silent audio from user gesture
-                if (!audioContext) {
-                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                    const buffer = audioContext.createBuffer(1, 1, 22050);
-                    const source = audioContext.createBufferSource();
-                    source.buffer = buffer;
-                    source.connect(audioContext.destination);
-                    source.start(0);
-                    console.log('iOS audio unlocked');
-                }
+                updateStatus('Requesting microphone access...', 'connecting');
                 
                 // Check for speech recognition support
                 if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
@@ -372,9 +380,7 @@
                 const audioUrl = URL.createObjectURL(audioBlob);
                 
                 currentAudio = new Audio(audioUrl);
-                
-                // Pre-load to help iOS Safari
-                currentAudio.load();
+                currentAudio.preload = 'auto';
                 
                 currentAudio.onended = () => {
                     URL.revokeObjectURL(audioUrl);
@@ -397,23 +403,26 @@
                     }
                 };
                 
-                // iOS Safari requires play() promise handling
-                try {
-                    await currentAudio.play();
-                } catch (playError) {
-                    console.error('Play failed:', playError);
-                    // iOS might need user interaction - add tap-to-play fallback
-                    if (playError.name === 'NotAllowedError') {
-                        addMessage('assistant', '(Tap screen to hear audio)');
-                        document.body.addEventListener('click', async () => {
-                            try {
-                                await currentAudio.play();
-                            } catch (e) {
-                                console.error('Still failed:', e);
-                            }
-                        }, { once: true });
-                    }
-                    throw playError;
+                // Play with better error handling
+                const playPromise = currentAudio.play();
+                
+                if (playPromise !== undefined) {
+                    playPromise.catch(error => {
+                        console.error('❌ Audio play error:', error.name, error.message);
+                        
+                        // Log to user
+                        if (error.name === 'NotAllowedError') {
+                            addMessage('assistant', '⚠️ Audio blocked - tap screen to enable');
+                        } else if (error.name === 'NotSupportedError') {
+                            addMessage('assistant', '⚠️ Audio format not supported');
+                        } else {
+                            addMessage('assistant', `⚠️ Audio error: ${error.name}`);
+                        }
+                        
+                        if (isActive) {
+                            updateStatus('🎙️ Listening... (audio failed)', 'connected');
+                        }
+                    });
                 }
                 
             } catch (error) {
