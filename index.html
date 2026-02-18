@@ -146,9 +146,7 @@
         </div>
         
         <div id="transcript" class="transcript" style="display:none;">
-            <div id="messages">
-                <div style="text-align:center; color:#999; font-size:14px;">Conversation will appear here...</div>
-            </div>
+            <div id="messages"></div>
         </div>
         
         <div class="info">
@@ -186,12 +184,13 @@
             console.log('📝 Adding message:', role, content.substring(0, 50));
             console.log('📝 Messages div children count before:', messagesDiv.children.length);
             
-            transcriptDiv.style.display = 'block';
-            
-            // Clear placeholder on first message
-            if (messagesDiv.children.length === 1 && messagesDiv.children[0].style) {
+            // Clear placeholder if this is the first real message
+            if (messagesDiv.children.length === 1 && messagesDiv.children[0].textContent.includes('conversation will appear')) {
+                console.log('🗑️ Clearing placeholder');
                 messagesDiv.innerHTML = '';
             }
+            
+            transcriptDiv.style.display = 'block';
             
             const msgDiv = document.createElement('div');
             msgDiv.className = `message ${role}`;
