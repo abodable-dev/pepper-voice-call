@@ -10,354 +10,270 @@
     
     <!-- iOS Meta Tags -->
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <meta name="apple-mobile-web-app-title" content="Pepper">
     <link rel="apple-touch-icon" href="icon.svg">
     
     <!-- Theme Color -->
-    <meta name="theme-color" content="#3b82f6">
+    <meta name="theme-color" content="#050505">
+    
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: #F8F9FA;
+            background: #050505;
             min-height: 100vh;
             overflow: hidden;
+            color: white;
+        }
+        
+        .container {
+            height: 100vh;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 96px 40px;
         }
         
         /* Header */
         .header {
-            padding: 56px 24px 16px;
-            background: rgba(255,255,255,0.6);
-            backdrop-filter: blur(20px);
-            border-bottom: 1px solid rgba(0,0,0,0.03);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            text-align: center;
         }
-        .header-left {
+        .header-label {
+            color: rgba(255,255,255,0.2);
+            font-size: 11px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.3em;
+            margin-bottom: 8px;
+        }
+        .header-status {
+            font-size: 30px;
+            font-weight: bold;
+            letter-spacing: -0.02em;
+        }
+        
+        /* Orb */
+        .orb-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            height: 256px;
             display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+        .orb {
+            position: relative;
+            width: 200px;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .orb-blob {
+            position: absolute;
+            border-radius: 50%;
+            mix-blend-mode: screen;
+            filter: blur(20px);
+        }
+        .orb-blob-1 {
+            width: 96px;
+            height: 96px;
+            background: #5ac8fa;
+            opacity: 0.7;
+            animation: pulse 3s ease-in-out infinite;
+        }
+        .orb-blob-2 {
+            width: 112px;
+            height: 112px;
+            left: -24px;
+            background: #5e5ce6;
+            opacity: 0.8;
+            animation: bounce 4s ease-in-out infinite;
+            animation-delay: 0.2s;
+        }
+        .orb-blob-3 {
+            width: 112px;
+            height: 112px;
+            right: -24px;
+            background: #bf5af2;
+            opacity: 0.8;
+            animation: bounce 5s ease-in-out infinite;
+            animation-delay: 0.8s;
+        }
+        .orb-blob-4 {
+            width: 144px;
+            height: 80px;
+            background: #ff375f;
+            opacity: 0.6;
+            animation: pulse 4s ease-in-out infinite;
+            animation-delay: 1.5s;
+        }
+        .orb-glow {
+            position: absolute;
+            bottom: -60px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 350px;
+            height: 150px;
+            border-radius: 50%;
+            filter: blur(90px);
+            opacity: 0.4;
+            background: radial-gradient(ellipse at center, #5ac8fa 0%, #5e5ce6 30%, #bf5af2 60%, #ff375f 100%);
+            animation: pulse 2s ease-in-out infinite;
+        }
+        .orb.active .orb-blob {
+            transform: scale(1.3);
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.7; }
+            50% { transform: scale(1.1); opacity: 0.9; }
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .transcript {
+            margin-top: 32px;
+            font-size: 18px;
+            font-weight: 600;
+            font-style: italic;
+            color: rgba(255,255,255,0.4);
+            text-align: center;
+            padding: 0 16px;
+            max-width: 600px;
+        }
+        
+        /* Bottom Controls */
+        .controls {
+            width: 100%;
+            max-width: 400px;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 24px;
+        }
+        .control-item {
+            display: flex;
+            flex-direction: column;
             align-items: center;
             gap: 12px;
         }
-        .avatar {
-            width: 36px;
-            height: 36px;
-            background: white;
-            border-radius: 50%;
+        .control-btn {
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 18px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            border: 1px solid rgba(0,0,0,0.05);
-        }
-        .header-info {
-            display: flex;
-            flex-direction: column;
-        }
-        .header-title {
-            font-weight: bold;
-            color: rgba(0,0,0,0.8);
-            font-size: 14px;
-            letter-spacing: -0.01em;
-        }
-        .status-row {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .status-dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: #3b82f6;
-            animation: pulse 2s ease-in-out infinite;
-        }
-        .status-dot.listening { background: #ef4444; }
-        .status-dot.speaking { background: #22c55e; }
-        .status-dot.thinking { background: #eab308; }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-        .status-text {
-            font-size: 10px;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 0.15em;
-            color: rgba(0,0,0,0.4);
-        }
-        
-        /* Main Content */
-        .content {
-            height: calc(100vh - 300px);
-            overflow-y: auto;
-            padding: 32px 24px 128px;
-        }
-        .query-section {
-            margin-bottom: 48px;
-        }
-        .query-label {
-            font-size: 9px;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 0.2em;
-            color: rgba(0,0,0,0.3);
-            margin-bottom: 12px;
-        }
-        .query-text {
-            font-size: 34px;
-            line-height: 1.2;
-            font-weight: bold;
-            color: rgba(0,0,0,0.9);
-            letter-spacing: -0.02em;
-        }
-        .query-text.placeholder {
-            color: rgba(0,0,0,0.3);
-            font-style: italic;
-        }
-        
-        .response-section {
-            margin-top: 48px;
-        }
-        .response-label {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 16px;
-            color: rgba(0,0,0,0.5);
-        }
-        .response-label svg {
-            width: 14px;
-            height: 14px;
-        }
-        .response-label span {
-            font-size: 10px;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.15em;
-        }
-        .response-card {
-            background: white;
-            border-radius: 28px;
-            padding: 28px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.03);
-            border: 1px solid rgba(0,0,0,0.03);
-        }
-        .response-text {
-            color: rgba(0,0,0,0.8);
-            font-weight: 500;
-            line-height: 1.6;
-            font-size: 17px;
-            white-space: pre-wrap;
-        }
-        .waveform {
-            margin-top: 32px;
-            background: #F8F9FA;
-            padding: 16px;
-            border-radius: 16px;
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            border: 1px solid rgba(0,0,0,0.03);
-        }
-        .play-btn {
-            width: 44px;
-            height: 44px;
-            background: black;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
             border: none;
-            cursor: pointer;
-            transition: transform 0.1s;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-        }
-        .play-btn:active {
-            transform: scale(0.9);
-        }
-        .bars {
-            flex: 1;
-            display: flex;
-            align-items: flex-end;
-            gap: 2px;
-            height: 28px;
-        }
-        .bar {
-            flex: 1;
-            background: rgba(0,0,0,0.08);
-            border-radius: 4px;
-            transition: all 0.3s;
-        }
-        .bar.active {
-            background: rgba(59,130,246,0.4);
-            animation: pulse 0.6s ease-in-out infinite;
-        }
-        
-        /* Bottom Status Area - CarPlay Style */
-        .input-container {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            padding: 48px 24px 32px;
-            background: linear-gradient(to top, #F8F9FA, #F8F9FA 70%, transparent);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
-        .mic-btn {
-            width: 120px;
-            height: 120px;
-            background: #2563eb;
-            border: none;
-            border-radius: 36px;
             cursor: pointer;
             transition: all 0.2s;
-            color: white;
-            box-shadow: 0 0 40px rgba(37,99,235,0.4);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 16px;
             user-select: none;
             -webkit-user-select: none;
             -webkit-tap-highlight-color: transparent;
         }
-        .mic-btn svg {
-            width: 48px;
-            height: 48px;
-        }
-        .mic-btn:active {
+        .control-btn:active {
             transform: scale(0.95);
         }
-        .mic-btn.listening {
+        .control-btn.side {
+            width: 80px;
+            height: 80px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 30px;
+            color: rgba(255,255,255,0.6);
+        }
+        .control-btn.side:active {
+            background: rgba(255,255,255,0.1);
+        }
+        .control-btn.main {
+            width: 96px;
+            height: 96px;
+            background: #2563eb;
+            border-radius: 36px;
+            color: white;
+            box-shadow: 0 0 40px rgba(37,99,235,0.4);
+        }
+        .control-btn.main.listening {
             background: #dc2626;
             box-shadow: 0 0 40px rgba(220,38,38,0.4);
             animation: pulse 1.5s ease-in-out infinite;
         }
-        .mic-btn.speaking {
-            background: #16a34a;
-            box-shadow: 0 0 40px rgba(22,163,74,0.4);
-        }
-        .mic-btn.thinking {
+        .control-btn.main.thinking {
             background: #ca8a04;
             box-shadow: 0 0 40px rgba(202,138,4,0.4);
         }
-        .mic-instruction {
-            font-size: 13px;
-            font-weight: 600;
-            color: rgba(0,0,0,0.5);
-            text-align: center;
+        .control-btn.main.speaking {
+            background: #16a34a;
+            box-shadow: 0 0 40px rgba(22,163,74,0.4);
         }
-        .interrupt-hint {
-            font-size: 11px;
-            color: rgba(0,0,0,0.3);
-            text-align: center;
-            margin-top: 8px;
-        }
-        .footer-info {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 16px 24px 8px;
-            max-width: 768px;
-            margin: 0 auto;
-        }
-        .footer-info p {
+        .control-label {
             font-size: 10px;
             font-weight: bold;
-            color: rgba(0,0,0,0.2);
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-        }
-        .footer-status {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .footer-status .dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: #22c55e;
-            box-shadow: 0 0 8px rgba(34,197,94,0.4);
-        }
-        .footer-status span {
-            font-size: 10px;
-            font-weight: bold;
-            color: rgba(0,0,0,0.3);
             text-transform: uppercase;
             letter-spacing: 0.15em;
         }
+        .control-label.dim {
+            color: rgba(255,255,255,0.3);
+        }
         
-        /* Utility */
-        .hide-scrollbar::-webkit-scrollbar { display: none; }
-        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        /* Hide scrollbar */
+        ::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body>
-    <!-- Header -->
-    <div class="header">
-        <div class="header-left">
-            <div class="avatar">🌶️</div>
-            <div class="header-info">
-                <div class="header-title">Pepper</div>
-                <div class="status-row">
-                    <div class="status-dot" id="statusDot"></div>
-                    <div class="status-text" id="statusText">Ready to help</div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Content -->
-    <div class="content hide-scrollbar" id="content">
-        <div class="query-section">
-            <div class="query-label">Current Focus</div>
-            <div class="query-text placeholder" id="queryText">
-                Tap the mic to speak...
-            </div>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-label">Voice Mode</div>
+            <div class="header-status" id="status">Tap mic to start</div>
         </div>
 
-        <div class="response-section" id="responseSection" style="display:none;">
-            <div class="response-label">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path>
-                </svg>
-                <span>Pepper's Response</span>
+        <!-- Orb & Transcript -->
+        <div class="orb-container">
+            <div class="orb-glow"></div>
+            <div class="orb" id="orb">
+                <div class="orb-blob orb-blob-1"></div>
+                <div class="orb-blob orb-blob-2"></div>
+                <div class="orb-blob orb-blob-3"></div>
+                <div class="orb-blob orb-blob-4"></div>
             </div>
-            <div class="response-card">
-                <div class="response-text" id="responseText"></div>
-                <div class="waveform">
-                    <button class="play-btn" id="playBtn">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
-                            <path d="M8 5v14l11-7z"/>
-                        </svg>
-                    </button>
-                    <div class="bars" id="waveformBars"></div>
-                    <span style="font-size:11px; font-weight:bold; color:rgba(0,0,0,0.3);" id="waveformText">Tap to play</span>
-                </div>
+            <div class="transcript" id="transcript">Tap the mic to talk</div>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <div class="control-item">
+                <button class="control-btn side">
+                    <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
+                    </svg>
+                </button>
+                <span class="control-label dim">Nav</span>
+            </div>
+            <div class="control-item">
+                <button class="control-btn main" id="micBtn">
+                    <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                        <line x1="12" y1="19" x2="12" y2="23"></line>
+                        <line x1="8" y1="23" x2="16" y2="23"></line>
+                    </svg>
+                </button>
+                <span class="control-label" id="micLabel">Voice</span>
+            </div>
+            <div class="control-item">
+                <button class="control-btn side">
+                    <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polygon points="10 8 16 12 10 16 10 8"></polygon>
+                    </svg>
+                </button>
+                <span class="control-label dim">Music</span>
             </div>
         </div>
-    </div>
-
-    <!-- Bottom Status -->
-    <div class="input-container">
-        <button class="mic-btn" id="micBtn">
-            <svg fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-                <line x1="12" y1="19" x2="12" y2="23"></line>
-                <line x1="8" y1="23" x2="16" y2="23"></line>
-            </svg>
-        </button>
-        <div class="mic-instruction" id="micInstruction">Tap mic to start</div>
-        <div class="interrupt-hint" id="interruptHint" style="display:none;">Tap anywhere to interrupt</div>
     </div>
 
     <script>
@@ -375,75 +291,54 @@
         let isProcessing = false;
         let conversationHistory = [];
         let currentAudio = null;
-        let currentResponse = null;
         let audioQueue = [];
         let isPlayingQueue = false;
+        let silenceTimer = null;
+        let partialTranscript = '';
 
         // DOM
         const micBtn = document.getElementById('micBtn');
-        const micInstruction = document.getElementById('micInstruction');
-        const interruptHint = document.getElementById('interruptHint');
-        const statusDot = document.getElementById('statusDot');
-        const statusText = document.getElementById('statusText');
-        const queryText = document.getElementById('queryText');
-        const responseSection = document.getElementById('responseSection');
-        const responseText = document.getElementById('responseText');
-        const playBtn = document.getElementById('playBtn');
-        const waveformBars = document.getElementById('waveformBars');
-        const waveformText = document.getElementById('waveformText');
-        
-        let silenceTimer = null;
-        let partialTranscript = '';
-        let isInterrupting = false;
-
-        // Generate waveform bars
-        const barHeights = [2, 4, 7, 3, 5, 8, 6, 4, 2, 4, 7, 3, 5, 2, 4, 7, 3, 5, 8, 6, 4, 2];
-        barHeights.forEach(h => {
-            const bar = document.createElement('div');
-            bar.className = 'bar';
-            bar.style.height = `${h * 10}%`;
-            waveformBars.appendChild(bar);
-        });
+        const micLabel = document.getElementById('micLabel');
+        const statusEl = document.getElementById('status');
+        const transcriptEl = document.getElementById('transcript');
+        const orb = document.getElementById('orb');
 
         // Update status
-        function setStatus(state, text) {
-            statusDot.className = 'status-dot ' + state;
-            statusText.textContent = text;
+        function setStatus(text) {
+            statusEl.textContent = text;
+        }
+
+        // Update transcript
+        function setTranscript(text) {
+            transcriptEl.textContent = text;
         }
 
         // Initialize continuous recognition with VAD
         async function initRecognition() {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (!SpeechRecognition) {
-                alert('Speech recognition not supported in this browser');
+                alert('Speech recognition not supported');
                 return false;
             }
 
             recognition = new SpeechRecognition();
             recognition.continuous = true;
-            recognition.interimResults = true; // Get partial results
+            recognition.interimResults = true;
             recognition.lang = 'en-AU';
 
             recognition.onresult = (event) => {
                 const result = event.results[event.results.length - 1];
                 const transcript = result[0].transcript.trim();
                 
-                // Update UI with current speech
                 if (transcript) {
                     partialTranscript = transcript;
-                    queryText.textContent = transcript;
-                    queryText.classList.remove('placeholder');
+                    setTranscript(transcript);
                     
-                    // Reset silence timer - user is still talking
                     clearTimeout(silenceTimer);
                     
-                    // If this is a final result, start silence detection
                     if (result.isFinal && !isProcessing) {
-                        console.log('Final segment:', transcript);
                         silenceTimer = setTimeout(() => {
-                            // 1.5 seconds of silence - send it
                             if (partialTranscript && !isProcessing) {
-                                console.log('Silence detected, sending:', partialTranscript);
                                 sendTranscript(partialTranscript);
                             }
                         }, 1500);
@@ -453,22 +348,15 @@
 
             recognition.onerror = (e) => {
                 console.error('Recognition error:', e.error);
-                if (e.error !== 'no-speech' && e.error !== 'aborted' && e.error !== 'audio-capture') {
-                    setStatus('', 'Tap to restart');
-                }
             };
 
             recognition.onend = () => {
-                console.log('Recognition ended');
-                if (isActive && !isProcessing && !isInterrupting) {
+                if (isActive && !isProcessing) {
                     setTimeout(() => {
                         if (isActive) {
                             try {
                                 recognition.start();
-                                console.log('Recognition restarted');
-                            } catch (e) {
-                                console.log('Restart skipped:', e.message);
-                            }
+                            } catch (e) {}
                         }
                     }, 100);
                 }
@@ -483,13 +371,12 @@
                 }
                 return true;
             } catch (err) {
-                console.error('Mic error:', err);
                 alert('Microphone access denied');
                 return false;
             }
         }
 
-        // Start continuous listening
+        // Start listening
         async function startListening() {
             if (!recognition) {
                 const ready = await initRecognition();
@@ -499,19 +386,16 @@
             isActive = true;
             partialTranscript = '';
             micBtn.classList.add('listening');
-            micInstruction.textContent = 'Listening... just talk naturally';
-            interruptHint.style.display = 'none';
-            setStatus('listening', 'Listening...');
+            micLabel.textContent = 'Listening';
+            setStatus('Listening...');
+            orb.classList.add('active');
             
             try {
                 recognition.start();
-                console.log('Continuous listening started');
-            } catch (e) {
-                console.log('Already running:', e.message);
-            }
+            } catch (e) {}
         }
 
-        // Send the transcript
+        // Send transcript
         async function sendTranscript(transcript) {
             if (isProcessing) return;
             
@@ -521,57 +405,14 @@
             
             micBtn.classList.remove('listening');
             micBtn.classList.add('thinking');
-            setStatus('thinking', 'Thinking...');
-            micInstruction.textContent = 'Processing...';
-            interruptHint.style.display = 'block';
+            setStatus('Thinking...');
             
             await sendMessage(transcript);
         }
 
-        // Interrupt - stop Pepper and reset
-        function interrupt() {
-            console.log('🛑 Interrupted!');
-            isInterrupting = true;
-            
-            // Stop all audio
-            if (currentAudio) {
-                currentAudio.pause();
-                currentAudio.currentTime = 0;
-            }
-            audioQueue = [];
-            isPlayingQueue = false;
-            isSpeaking = false;
-            animateWaveform(false);
-            
-            // Reset state
-            isProcessing = false;
-            partialTranscript = '';
-            clearTimeout(silenceTimer);
-            
-            // Ready to listen again
-            micBtn.classList.remove('speaking', 'thinking');
-            micBtn.classList.add('listening');
-            setStatus('listening', 'Listening...');
-            micInstruction.textContent = 'Listening... just talk naturally';
-            interruptHint.style.display = 'none';
-            
-            // Ensure recognition is running
-            if (recognition && isActive) {
-                try {
-                    recognition.start();
-                } catch (e) {
-                    console.log('Recognition already running');
-                }
-            }
-            
-            setTimeout(() => {
-                isInterrupting = false;
-            }, 500);
-        }
-
-        // Send message
+        // Send message to API
         async function sendMessage(userMessage) {
-            audioQueue = []; // Clear any old audio
+            audioQueue = [];
             conversationHistory.push({ role: 'user', content: userMessage });
 
             try {
@@ -596,11 +437,10 @@
                 let fullText = '';
                 let buffer = '';
 
-                setStatus('speaking', 'Speaking...');
-                isSpeaking = true;
                 micBtn.classList.remove('thinking');
                 micBtn.classList.add('speaking');
-                animateWaveform(true);
+                setStatus('Speaking...');
+                isSpeaking = true;
 
                 while (true) {
                     const { done, value } = await reader.read();
@@ -637,27 +477,19 @@
                 if (buffer.trim()) playTTS(buffer.trim());
 
                 conversationHistory.push({ role: 'assistant', content: fullText });
-                currentResponse = fullText;
-                
-                responseText.textContent = fullText;
-                responseSection.style.display = 'block';
+                setTranscript(fullText);
 
-                // Wait for audio queue to finish
+                // Wait for audio to finish
                 const checkDone = () => {
                     if (audioQueue.length === 0 && !isPlayingQueue) {
                         isProcessing = false;
                         isSpeaking = false;
-                        animateWaveform(false);
                         
-                        // Back to listening
                         micBtn.classList.remove('speaking', 'thinking');
                         micBtn.classList.add('listening');
-                        setStatus('listening', 'Listening...');
-                        micInstruction.textContent = 'Listening... just talk naturally';
-                        interruptHint.style.display = 'none';
-                        console.log('Ready for next input - listening resumed');
+                        setStatus('Listening...');
+                        setTranscript('Listening...');
                     } else {
-                        console.log('Waiting for audio... Queue:', audioQueue.length, 'Playing:', isPlayingQueue);
                         setTimeout(checkDone, 500);
                     }
                 };
@@ -665,12 +497,12 @@
 
             } catch (err) {
                 console.error('Message error:', err);
-                setStatus('', 'Error');
+                setStatus('Error');
                 isProcessing = false;
             }
         }
 
-        // Play TTS - add to queue
+        // Play TTS
         async function playTTS(text) {
             try {
                 const response = await fetch(TTS_URL, {
@@ -679,26 +511,21 @@
                     body: JSON.stringify({ text })
                 });
 
-                if (!response.ok) throw new Error(`TTS error: ${response.status}`);
+                if (!response.ok) throw new Error(`TTS error`);
 
                 const audioBlob = await response.blob();
                 audioQueue.push(audioBlob);
-                console.log('Added to queue. Queue length:', audioQueue.length);
                 
-                // Start playing if not already playing
-                if (!isPlayingQueue) {
-                    playNextInQueue();
-                }
+                if (!isPlayingQueue) playNextInQueue();
             } catch (err) {
                 console.error('TTS error:', err);
             }
         }
         
-        // Play next audio chunk from queue
+        // Play next audio chunk
         async function playNextInQueue() {
             if (audioQueue.length === 0) {
                 isPlayingQueue = false;
-                console.log('Queue empty, playback complete');
                 return;
             }
             
@@ -709,88 +536,65 @@
             if (!currentAudio) currentAudio = new Audio();
             
             currentAudio.onended = () => {
-                console.log('Chunk finished. Remaining:', audioQueue.length);
                 URL.revokeObjectURL(audioUrl);
-                playNextInQueue(); // Play next
+                playNextInQueue();
             };
             
             currentAudio.onerror = () => {
-                console.error('Audio error, skipping to next');
                 URL.revokeObjectURL(audioUrl);
-                playNextInQueue(); // Skip to next
+                playNextInQueue();
             };
             
             currentAudio.src = audioUrl;
             await currentAudio.play();
-            console.log('Playing chunk');
         }
 
-        // Animate waveform
-        function animateWaveform(active) {
-            const bars = waveformBars.querySelectorAll('.bar');
-            bars.forEach(bar => {
-                if (active) bar.classList.add('active');
-                else bar.classList.remove('active');
-            });
-            waveformText.textContent = active ? 'Playing' : 'Tap to play';
-        }
-
-        // Play response
-        playBtn.addEventListener('click', async () => {
-            if (!currentResponse) return;
-            if (isPlayingQueue) return;
-
-            isSpeaking = true;
-            animateWaveform(true);
-            audioQueue = []; // Clear queue
-            await playTTS(currentResponse);
+        // Interrupt
+        function interrupt() {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+            }
+            audioQueue = [];
+            isPlayingQueue = false;
+            isSpeaking = false;
+            isProcessing = false;
+            partialTranscript = '';
+            clearTimeout(silenceTimer);
             
-            // Wait for playback to finish
-            const checkPlayback = () => {
-                if (!isPlayingQueue && audioQueue.length === 0) {
-                    isSpeaking = false;
-                    animateWaveform(false);
-                } else {
-                    setTimeout(checkPlayback, 500);
-                }
-            };
-            setTimeout(checkPlayback, 500);
-        });
+            micBtn.classList.remove('speaking', 'thinking');
+            micBtn.classList.add('listening');
+            setStatus('Listening...');
+            setTranscript('Listening...');
+            
+            if (recognition && isActive) {
+                try { recognition.start(); } catch (e) {}
+            }
+        }
 
-        // Tap mic button to start or interrupt
+        // Mic button click
         micBtn.addEventListener('click', () => {
             if (!isActive) {
-                // First time - start listening
                 startListening();
             } else if (isSpeaking || isProcessing) {
-                // Interrupt Pepper
                 interrupt();
             }
         });
 
-        // Tap anywhere on screen to interrupt
+        // Tap anywhere to interrupt
         document.addEventListener('click', (e) => {
-            if (e.target === micBtn || e.target === playBtn) return; // Don't interrupt on button clicks
-            
+            if (e.target === micBtn || e.target.closest('.control-btn')) return;
             if ((isSpeaking || isProcessing) && isActive) {
                 interrupt();
             }
         });
 
-        // Auto-start on load
+        // Register service worker
         window.addEventListener('load', () => {
-            console.log('Page loaded - ready to start');
-            
-            // Register service worker for PWA
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.register('sw.js')
-                    .then(reg => console.log('Service Worker registered'))
-                    .catch(err => console.log('SW registration failed:', err));
+                    .catch(err => console.log('SW failed:', err));
             }
-            
-            // Auto-start listening (requires user gesture on some browsers)
-            // User can tap the mic button to explicitly start
-            micInstruction.textContent = 'Tap mic to start listening';
         });
     </script>
 </body>
