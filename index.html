@@ -79,11 +79,13 @@
         }
         .transcript {
             margin-top: 20px;
+            min-height: 100px;
             max-height: 300px;
             overflow-y: auto;
             padding: 15px;
             background: #f8f9fa;
             border-radius: 10px;
+            border: 2px solid #007bff;
         }
         .message {
             margin: 10px 0;
@@ -144,7 +146,9 @@
         </div>
         
         <div id="transcript" class="transcript" style="display:none;">
-            <div id="messages"></div>
+            <div id="messages">
+                <div style="text-align:center; color:#999; font-size:14px;">Conversation will appear here...</div>
+            </div>
         </div>
         
         <div class="info">
@@ -183,6 +187,11 @@
             console.log('📝 Messages div children count before:', messagesDiv.children.length);
             
             transcriptDiv.style.display = 'block';
+            
+            // Clear placeholder on first message
+            if (messagesDiv.children.length === 1 && messagesDiv.children[0].style) {
+                messagesDiv.innerHTML = '';
+            }
             
             const msgDiv = document.createElement('div');
             msgDiv.className = `message ${role}`;
@@ -234,8 +243,11 @@
                 
                 // Initialize conversation
                 conversationHistory = [];
-                document.getElementById('messages').innerHTML = '';
-                console.log('🎬 Call started - transcript area visible');
+                const messagesDiv = document.getElementById('messages');
+                const transcriptDiv = document.getElementById('transcript');
+                messagesDiv.innerHTML = '<div style="text-align:center;color:#999;padding:20px;">Your conversation will appear here...</div>';
+                transcriptDiv.style.display = 'block';
+                console.log('🎬 Call started - transcript area should be visible with placeholder');
                 
                 // Setup speech recognition
                 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
