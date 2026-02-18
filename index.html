@@ -264,10 +264,10 @@
                         'Authorization': `Bearer ${API_TOKEN}`
                     },
                     body: JSON.stringify({ 
-                        model: 'anthropic/claude-opus-4.6-20250125',
+                        model: 'anthropic/claude-sonnet-3.5-20241022',
                         messages: conversationHistory,
                         stream: false,
-                        max_tokens: 2048
+                        max_tokens: 1024
                     })
                 });
                 
