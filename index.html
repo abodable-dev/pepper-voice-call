@@ -160,24 +160,8 @@
         const TTS_URL = `${BASE_URL}/voice/tts`;
         const API_TOKEN = '0606e7e42d266711af55d7f720655c5ce242086b8f0ca51a';
         
-        let currentAudio = null; // Track playing audio
-        let audioContext = null; // iOS audio unlock
-        let audioQueue = []; // Queue for iOS
-        let isAudioUnlocked = false;
-
-        // Unlock audio on first user interaction
-        function unlockAudio() {
-            if (isAudioUnlocked) return;
-            
-            const audio = new Audio();
-            audio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
-            audio.play().then(() => {
-                console.log('✅ Audio unlocked for iOS');
-                isAudioUnlocked = true;
-            }).catch(e => {
-                console.log('⚠️ Audio unlock failed:', e);
-            });
-        }
+        let currentAudio = null; // Persistent audio element
+        let isAudioReady = false;
 
         function updateStatus(message, type = 'idle') {
             const statusEl = document.getElementById('status');
@@ -199,10 +183,21 @@
 
         async function startCall() {
             try {
-                // Unlock audio first
-                unlockAudio();
-                
                 updateStatus('Requesting microphone access...', 'connecting');
+                
+                // Create persistent audio element from user gesture
+                if (!currentAudio) {
+                    currentAudio = new Audio();
+                    // Play silent audio to unlock iOS
+                    currentAudio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+                    try {
+                        await currentAudio.play();
+                        isAudioReady = true;
+                        console.log('✅ Audio element ready');
+                    } catch (e) {
+                        console.log('⚠️ Audio unlock failed:', e);
+                    }
+                }
                 
                 // Check for speech recognition support
                 if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
@@ -345,15 +340,9 @@
 
         async function playTTS(text) {
             try {
-                // Stop any currently playing audio
-                if (currentAudio) {
-                    currentAudio.pause();
-                    currentAudio = null;
-                }
-
                 console.log('🗣️ Fetching TTS for:', text.substring(0, 50));
 
-                // Get TTS audio from backend (same as test page)
+                // Get TTS audio from backend
                 const response = await fetch(TTS_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -365,19 +354,25 @@
                 }
 
                 const audioBlob = await response.blob();
-                console.log('✅ Got audio blob:', audioBlob.size, 'bytes, type:', audioBlob.type);
+                console.log('✅ Got audio blob:', audioBlob.size, 'bytes');
                 
+                // Reuse the persistent audio element (keeps user gesture chain)
                 const audioUrl = URL.createObjectURL(audioBlob);
-                currentAudio = new Audio(audioUrl);
                 
-                currentAudio.onplay = () => {
-                    console.log('▶️ Playing audio');
-                };
+                if (!currentAudio) {
+                    currentAudio = new Audio();
+                }
+                
+                // Remove old listeners
+                currentAudio.onended = null;
+                currentAudio.onerror = null;
+                
+                // Set new source
+                currentAudio.src = audioUrl;
                 
                 currentAudio.onended = () => {
                     console.log('✅ Audio finished');
                     URL.revokeObjectURL(audioUrl);
-                    currentAudio = null;
                     if (isActive) {
                         updateStatus('🎙️ Listening...', 'connected');
                     }
@@ -386,18 +381,17 @@
                 currentAudio.onerror = (e) => {
                     console.error('❌ Audio error:', currentAudio.error);
                     URL.revokeObjectURL(audioUrl);
-                    addMessage('assistant', `⚠️ Audio error: ${currentAudio.error?.message || 'Unknown'}`);
                     if (isActive) {
                         updateStatus('🎙️ Listening...', 'connected');
                     }
                 };
                 
-                // Play (same as test page)
+                // Play on the same Audio element
                 await currentAudio.play();
+                console.log('▶️ Playing');
                 
             } catch (error) {
                 console.error('❌ TTS error:', error);
-                addMessage('assistant', `⚠️ ${error.message}`);
                 if (isActive) {
                     updateStatus('🎙️ Listening...', 'connected');
                 }
